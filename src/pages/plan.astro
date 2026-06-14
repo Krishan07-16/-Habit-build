@@ -346,7 +346,8 @@ import Footer from '../components/Footer.astro';
     }
 
     var continuing = plan.status === 'continuing';
-    var day = continuing ? null : getCurrentDay(plan.startDate);
+    var day = continuing ? 3 : getCurrentDay(plan.startDate);
+    currentPhase = Math.min(day, 3);
 
     app.innerHTML = `
       <div class="text-center mb-10">
@@ -397,13 +398,13 @@ import Footer from '../components/Footer.astro';
         </div>
       </div>
 
-      <div id="session-indicator" class="mt-8"></div>
+      ${currentPhase >= 3 ? '<div id="session-indicator" class="mt-8"></div>' : ''}
 
       <div id="action-tools" class="mt-8"></div>
 
-      <div id="checkin-section"></div>
+      ${currentPhase >= 2 ? '<div id="checkin-section"></div>' : ''}
 
-      <div id="adjustment-history"></div>
+      ${currentPhase >= 2 ? '<div id="adjustment-history"></div>' : ''}
 
       <div class="flex items-center justify-center mt-8 gap-3">
         <button id="btn-restart" class="inline-flex items-center h-10 px-4 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Retake Assessment</button>
@@ -418,11 +419,11 @@ import Footer from '../components/Footer.astro';
       window.location.href = '/assessment';
     });
 
-    renderCheckIn(plan);
+    if (currentPhase >= 2) renderCheckIn(plan);
     renderActionTools(plan);
-    renderAdjustmentHistory();
-    renderSessionIndicator();
-    kickstartStopwatch(plan);
+    if (currentPhase >= 2) renderAdjustmentHistory();
+    if (currentPhase >= 3) renderSessionIndicator();
+    if (currentPhase >= 3) kickstartStopwatch(plan);
   }
 
   function renderError(message) {
@@ -607,6 +608,21 @@ import Footer from '../components/Footer.astro';
     });
   }
 
+  function hasThreeDayStreak() {
+    var checkIns = getSavedCheckIns();
+    var entries = Object.entries(checkIns)
+      .filter(function (_ref) { return _ref[1].actualMinutes >= 0; })
+      .sort(function (_ref2, _ref3) { return _ref2[0].localeCompare(_ref3[0]); });
+
+    var last3 = entries.slice(-3);
+    if (last3.length < 3) return false;
+
+    for (var i = 0; i < last3.length; i++) {
+      if (last3[i][1].actualMinutes < last3[i][1].target) return false;
+    }
+    return true;
+  }
+
   function escapeHtml(str) {
     if (typeof str !== 'string') return '';
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -619,6 +635,7 @@ import Footer from '../components/Footer.astro';
   let stopwatchSeconds = 0;
   let stopwatchInterval = null;
   let stopwatchStatus = 'idle';
+  let currentPhase = 1;
 
   function formatTimer(seconds) {
     const m = Math.floor(seconds / 60);
@@ -697,6 +714,15 @@ import Footer from '../components/Footer.astro';
         return false;
       }
 
+      var plan = getSavedPlan();
+      if (plan) {
+        var day = plan.status === 'continuing' ? 3 : getCurrentDay(plan.startDate);
+        if (Math.min(day, 3) < 3) {
+          clearStopwatchState();
+          return false;
+        }
+      }
+
       stopwatchSeconds = saved.seconds;
 
       if (saved.status === 'running') {
@@ -759,6 +785,10 @@ import Footer from '../components/Footer.astro';
     const section = document.getElementById('action-tools');
     if (!section || !plan) return;
 
+    if (currentTool === 'stopwatch' && currentPhase < 3) {
+      currentTool = 'timer';
+    }
+
     if (currentTool === 'timer-finished') {
       renderTimerFinished(section, plan);
     } else if (currentTool === 'stopwatch') {
@@ -813,17 +843,29 @@ import Footer from '../components/Footer.astro';
           </div>
           <p class="text-lg font-semibold tracking-[-0.6px] text-ink mb-1">Great job. You started.</p>
           <p class="text-sm text-body mb-6">You've already completed the hardest step.</p>
-          <button id="act-continue-stopwatch" class="inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Continue with Stopwatch</button>
+          ${currentPhase >= 3
+            ? '<button id="act-continue-stopwatch" class="inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Continue with Stopwatch</button>'
+            : '<button id="act-back-to-timer" class="inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Back to Timer</button>'
+          }
         </div>
       </div>
     `;
 
-    document.getElementById('act-continue-stopwatch')?.addEventListener('click', function () {
-      currentTool = 'stopwatch';
-      stopwatchStatus = 'idle';
-      stopwatchSeconds = 0;
-      renderStopwatchState(section, plan);
-    });
+    if (currentPhase >= 3) {
+      document.getElementById('act-continue-stopwatch')?.addEventListener('click', function () {
+        currentTool = 'stopwatch';
+        stopwatchStatus = 'idle';
+        stopwatchSeconds = 0;
+        renderStopwatchState(section, plan);
+      });
+    } else {
+      document.getElementById('act-back-to-timer')?.addEventListener('click', function () {
+        currentTool = 'timer';
+        timerSeconds = 300;
+        timerStatus = 'idle';
+        renderTimerState(section, plan);
+      });
+    }
   }
 
   function getDailyProgress(plan) {
@@ -1035,14 +1077,25 @@ import Footer from '../components/Footer.astro';
     const yesterdayStr = getDateString(yesterday);
     const yesterdayMissed = daysSinceStart >= 1 && !checkIns[yesterdayStr] && !todayEntry;
 
+    var hasStreak = hasThreeDayStreak();
+
     let html = '<div class="mt-8 space-y-6">';
 
     if (yesterdayMissed) {
-      html += `
-        <div class="rounded-md p-4 text-center" style="background-color:#ffefcf;box-shadow:0 0 0 1px rgba(0,0,0,0.06) inset;">
-          <p class="text-sm font-medium" style="color:#ab570a;">You can restart today. One missed day does not erase your progress.</p>
-        </div>
-      `;
+      if (hasStreak) {
+        html += `
+          <div class="bg-canvas rounded-md p-4 text-center" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+            <p class="text-sm text-success font-medium">&#10003; You're back on track.</p>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="bg-canvas rounded-md p-4" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+            <p class="text-sm text-body leading-relaxed mb-3">Missed yesterday? That's normal. Here's today's target: <strong>${plan.target} min</strong>. The 5-minute resistance timer is ready if you need it.</p>
+            <button id="btn-start-timer-recovery" class="inline-flex items-center h-9 px-4 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Start 5-Minute Timer</button>
+          </div>
+        `;
+      }
     }
 
     html += `
@@ -1106,6 +1159,19 @@ import Footer from '../components/Footer.astro';
         if (e.key === 'Enter') handleCheckInSubmit(plan, input);
       });
     }
+
+    document.getElementById('btn-start-timer-recovery')?.addEventListener('click', function () {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      timerSeconds = 300;
+      timerStatus = 'idle';
+      currentTool = 'timer';
+      renderActionTools(plan);
+      var toolsSection = document.getElementById('action-tools');
+      if (toolsSection) toolsSection.scrollIntoView({ behavior: 'smooth' });
+    });
   }
 
   function renderHistory(checkIns, todayStr) {
