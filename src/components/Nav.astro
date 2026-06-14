@@ -21,6 +21,11 @@ const { currentPage = 'home' } = Astro.props;
         >Plan</a
       >
       <a
+        href="/stopwatch"
+        class="text-sm no-underline px-2 py-1 rounded-full transition-colors ${currentPage === 'stopwatch' ? 'text-ink font-medium bg-canvas-soft' : 'text-body hover:text-ink'}"
+        >Stopwatch</a
+      >
+      <a
         href="/progress"
         class="text-sm no-underline px-2 py-1 rounded-full transition-colors ${currentPage === 'progress' ? 'text-ink font-medium bg-canvas-soft' : 'text-body hover:text-ink'}"
         >Progress</a

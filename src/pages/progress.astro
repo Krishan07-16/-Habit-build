@@ -509,4 +509,6 @@ import Footer from '../components/Footer.astro';
   }
 
   renderProgress();
+  setInterval(renderProgress, 3000);
+  window.addEventListener('storage', renderProgress);
 </script>

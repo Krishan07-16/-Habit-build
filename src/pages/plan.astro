@@ -95,6 +95,8 @@ import Footer from '../components/Footer.astro';
     localStorage.setItem(ADJUSTMENTS_KEY, JSON.stringify(adjustments));
   }
 
+  const TIMER_DURATION_KEY = 'habit-build-timer-duration';
+
   function getSavedTimerDuration() {
     try {
       var val = parseInt(localStorage.getItem(TIMER_DURATION_KEY), 10);
@@ -109,7 +111,6 @@ import Footer from '../components/Footer.astro';
   const TIMER_HISTORY_KEY = 'habit-build-timer-history';
   const STOPWATCH_SESSIONS_KEY = 'habit-build-stopwatch-sessions';
   const STOPWATCH_STATE_KEY = 'habit-build-stopwatch-state';
-  const TIMER_DURATION_KEY = 'habit-build-timer-duration';
 
   function getFeedback(actual, target, minimum, maximum) {
     if (actual < minimum) {
@@ -307,45 +308,55 @@ import Footer from '../components/Footer.astro';
   }
 
   function buildExplanation(target, minimum, maximum, answers) {
-    const { time, consistency, obstacles } = answers;
-    const parts = [];
+    const { habit, time, consistency, obstacles } = answers;
+    const bullets = [];
 
-    if (time === 'None') {
-      parts.push('Your plan starts small and focuses on consistency.');
-    } else if (time === 'Less than 15 minutes' || time === '15\u201330 minutes') {
-      parts.push('Your plan builds on your current routine while keeping things manageable.');
+    if (time === 'None' || consistency === 'Not at all' || consistency === 'A few times') {
+      bullets.push(`For ${escapeHtml(habit)}: Start with ${target} min/day.`);
     } else {
-      parts.push('Your plan is designed to maintain your current momentum.');
+      bullets.push(`For ${escapeHtml(habit)}: Aim for ${target} min/day.`);
     }
-
-    if (consistency === 'Not at all' || consistency === 'A few times') {
-      parts.push('The goal is to show up consistently, even in small doses.');
-    }
-
-    if (Array.isArray(obstacles)) {
-      if (obstacles.includes('It feels overwhelming')) {
-        parts.push('We have set a gentle starting point so it does not feel overwhelming.');
-      }
-      if (obstacles.includes("I know what to do but can't start")) {
-        parts.push('Starting is the hardest part, so we keep the first step small.');
-      }
-    }
-
-    parts.push(`Your daily target is ${target} minute${target > 1 ? 's' : ''}.`);
 
     if (minimum < target) {
-      parts.push(`On difficult days, aim for at least ${minimum} minute${minimum > 1 ? 's' : ''}.`);
+      bullets.push(`On hard days, do ${minimum} min.`);
     }
 
     if (maximum > target) {
-      parts.push(`When you feel motivated, ${maximum} minute${maximum > 1 ? 's' : ''} is a healthy upper limit.`);
+      bullets.push(`Max ${maximum} min to avoid burnout.`);
     }
 
-    if (consistency === 'Not at all' || consistency === 'A few times') {
-      parts.push('Remember: any amount counts toward building the habit.');
+    return bullets;
+  }
+
+  function renderPlanGuide(plan) {
+    var bullets = Array.isArray(plan.explanation) ? plan.explanation : [plan.explanation];
+    var t = Math.min(1, Math.max(0, (plan.target - plan.minimum) / (plan.maximum - plan.minimum || 1)));
+    var x0 = 4, x1 = 80, x2 = 156, y0 = 50, y1 = 6, y2 = 50;
+    var dotX = (1-t)*(1-t)*x0 + 2*(1-t)*t*x1 + t*t*x2;
+    var dotY = (1-t)*(1-t)*y0 + 2*(1-t)*t*y1 + t*t*y2;
+    var pct = Math.round(t * 100);
+
+    var bulletHtml = '';
+    for (var bi = 0; bi < bullets.length; bi++) {
+      bulletHtml += '<li class="text-sm text-body leading-relaxed pl-4 relative before:content-[\'\'] before:absolute before:left-0 before:top-2.5 before:w-1.5 before:h-1.5 before:rounded-full before:bg-ink/30">' + escapeHtml(bullets[bi]) + '</li>';
     }
 
-    return parts.join(' ');
+    return `
+      <div id="plan-guide" class="py-2 space-y-3">
+        <ul id="plan-bullets" class="space-y-1.5">${bulletHtml}</ul>
+        <div class="pt-2 flex justify-center">
+          <svg width="160" height="56" viewBox="0 0 160 56" fill="none" class="text-mute">
+            <path d="M4 50 Q80 6 156 50" stroke="#ebebeb" stroke-width="2" stroke-linecap="round" fill="none"/>
+            <path d="M4 50 Q80 6 156 50" stroke="#171717" stroke-width="2" stroke-linecap="round" fill="none"
+              stroke-dasharray="200" stroke-dashoffset="${200 - 200 * pct / 100}" style="transition:stroke-dashoffset 0.5s"/>
+            <circle cx="${dotX.toFixed(1)}" cy="${dotY.toFixed(1)}" r="4" fill="#171717" stroke="white" stroke-width="1.5"/>
+            <text x="${x0}" y="54" class="font-mono text-[9px]" fill="#888" text-anchor="middle">${plan.minimum}</text>
+            <text x="${x2}" y="54" class="font-mono text-[9px]" fill="#888" text-anchor="middle">${plan.maximum}</text>
+            <text x="${dotX.toFixed(1)}" y="0" class="font-mono text-[9px]" fill="#171717" text-anchor="middle" font-weight="500">Target ${plan.target}</text>
+          </svg>
+        </div>
+      </div>
+    `;
   }
 
   function renderPlan(plan) {
@@ -405,9 +416,7 @@ import Footer from '../components/Footer.astro';
           </div>
         </div>
 
-        <div class="py-2">
-          <p id="plan-explanation" class="text-sm text-body leading-relaxed">${escapeHtml(plan.explanation)}</p>
-        </div>
+        ${renderPlanGuide(plan)}
       </div>
 
       ${currentPhase >= 3 ? '<div id="session-indicator" class="mt-8"></div>' : ''}
@@ -436,6 +445,7 @@ import Footer from '../components/Footer.astro';
     if (currentPhase >= 2) renderAdjustmentHistory();
     if (currentPhase >= 3) renderSessionIndicator();
     if (currentPhase >= 3) kickstartStopwatch(plan);
+    kickstartTimer(plan);
   }
 
   function renderError(message) {
@@ -465,11 +475,14 @@ import Footer from '../components/Footer.astro';
     var targetEl = document.getElementById('plan-target-value');
     var minEl = document.getElementById('plan-minimum-value');
     var maxEl = document.getElementById('plan-maximum-value');
-    var explEl = document.getElementById('plan-explanation');
+    var guideEl = document.getElementById('plan-guide');
     if (targetEl) targetEl.textContent = plan.target;
     if (minEl) minEl.textContent = plan.minimum;
     if (maxEl) maxEl.textContent = plan.maximum;
-    if (explEl) explEl.innerHTML = escapeHtml(plan.explanation);
+    if (guideEl) {
+      guideEl.outerHTML = renderPlanGuide(plan);
+      var newGuide = document.getElementById('plan-guide');
+    }
   }
 
   function renderAdjustmentHistory() {
@@ -525,14 +538,20 @@ import Footer from '../components/Footer.astro';
   function handleStartNewPlan(plan) {
     var adaptedTarget = calculateAdaptedTarget();
     var newTarget = adaptedTarget || plan.target;
+    var newMin = Math.max(3, Math.round(newTarget * 0.5));
+    var newMax = Math.round(newTarget * 1.5);
 
     var newPlan = {
       habit: plan.habit,
       goal: plan.goal,
       target: newTarget,
-      minimum: Math.max(3, Math.round(newTarget * 0.5)),
-      maximum: Math.round(newTarget * 1.5),
-      explanation: 'Your new plan builds on your progress. Your daily target is ' + newTarget + ' minute' + (newTarget > 1 ? 's' : '') + ' based on your recent performance.',
+      minimum: newMin,
+      maximum: newMax,
+      explanation: [
+        'For ' + escapeHtml(plan.habit) + ': Aim for ' + newTarget + ' min/day.',
+        newMin < newTarget ? 'On hard days, do ' + newMin + ' min.' : null,
+        'Max ' + newMax + ' min to avoid burnout.',
+      ].filter(Boolean),
       startDate: new Date().toISOString(),
     };
 
@@ -635,13 +654,22 @@ import Footer from '../components/Footer.astro';
     return true;
   }
 
+  function hasCantStartObstacle() {
+    try {
+      var raw = localStorage.getItem(ASSESSMENT_KEY);
+      if (!raw) return false;
+      var answers = JSON.parse(raw);
+      return Array.isArray(answers.obstacles) && answers.obstacles.indexOf("I know what to do but can't start") !== -1;
+    } catch { return false; }
+  }
+
   function escapeHtml(str) {
     if (typeof str !== 'string') return '';
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
 
   let currentTool = 'timer';
-  let timerSeconds = 300;
+  let timerSeconds = getSavedTimerDuration();
   let timerInterval = null;
   let timerStatus = 'idle';
   let stopwatchSeconds = 0;
@@ -716,6 +744,63 @@ import Footer from '../components/Footer.astro';
     try { localStorage.removeItem(STOPWATCH_STATE_KEY); } catch {}
   }
 
+  const TIMER_STATE_KEY = 'habit-build-timer-state';
+
+  function saveTimerState(status) {
+    var state = {
+      remaining: timerSeconds,
+      status: status,
+      timestamp: new Date().toISOString(),
+    };
+    try { localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(state)); } catch {}
+  }
+
+  function clearTimerState() {
+    try { localStorage.removeItem(TIMER_STATE_KEY); } catch {}
+  }
+
+  function restoreTimerState() {
+    try {
+      var raw = localStorage.getItem(TIMER_STATE_KEY);
+      if (!raw) return false;
+      var saved = JSON.parse(raw);
+      if (!saved || !saved.status) {
+        clearTimerState();
+        return false;
+      }
+
+      timerSeconds = saved.remaining;
+
+      if (saved.status === 'running') {
+        var elapsed = (Date.now() - new Date(saved.timestamp).getTime()) / 1000;
+        if (elapsed > 0) {
+          timerSeconds -= Math.floor(elapsed);
+        }
+        if (timerSeconds <= 0) {
+          clearTimerState();
+          timerSeconds = getSavedTimerDuration();
+          timerStatus = 'idle';
+          currentTool = 'timer';
+          return false;
+        }
+        timerStatus = 'running';
+        currentTool = 'timer';
+        return true;
+      }
+
+      if (saved.status === 'paused') {
+        timerStatus = 'paused';
+        currentTool = 'timer';
+        return true;
+      }
+
+      return false;
+    } catch {
+      clearTimerState();
+      return false;
+    }
+  }
+
   function restoreStopwatchState() {
     try {
       var raw = localStorage.getItem(STOPWATCH_STATE_KEY);
@@ -768,9 +853,43 @@ import Footer from '../components/Footer.astro';
           stopwatchSeconds++;
           if (stopwatchSeconds % 5 === 0) {
             saveStopwatchState('running');
+            renderCheckIn(plan);
           }
           renderStopwatchState(section, plan);
           renderSessionIndicator();
+        }, 1000);
+      }
+    }
+  }
+
+  function kickstartTimer(plan) {
+    if (timerStatus === 'running' && !timerInterval) {
+      var section = document.getElementById('action-tools');
+      if (section) {
+        timerInterval = setInterval(function () {
+          timerSeconds--;
+          if (timerSeconds <= 0) {
+            timerSeconds = 0;
+            clearInterval(timerInterval);
+            timerInterval = null;
+            timerStatus = 'finished';
+            currentTool = 'timer-finished';
+            clearTimerState();
+            saveTimerToHistory();
+            var timerMinutes = Math.round(getSavedTimerDuration() / 60);
+            if (timerMinutes > 0) {
+              var ckCheckIns = getSavedCheckIns();
+              var ckTodayStr = getTodayString();
+              var ckExisting = ckCheckIns[ckTodayStr] ? ckCheckIns[ckTodayStr].actualMinutes : 0;
+              saveCheckInMinutes(plan, ckExisting + timerMinutes);
+            }
+            renderTimerFinished(section, plan);
+          } else {
+            if (timerSeconds % 5 === 0) {
+              saveTimerState('running');
+            }
+            renderTimerState(section, plan);
+          }
         }, 1000);
       }
     }
@@ -813,6 +932,33 @@ import Footer from '../components/Footer.astro';
   function renderTimerState(section, plan) {
     const isRunning = timerStatus === 'running';
     const isPaused = timerStatus === 'paused';
+    var isIdle = !isRunning && !isPaused;
+    var cantStart = hasCantStartObstacle();
+
+    var durationOptions = [120, 300, 600];
+    var durationLabels = ['2 min', '5 min', '10 min'];
+    if (cantStart) {
+      durationOptions = [120, 300, 600];
+      durationLabels = ['2 min', '5 min', '10 min'];
+    }
+    var savedDuration = getSavedTimerDuration();
+
+    function durBtn(seconds, label) {
+      var active = timerSeconds === seconds ? 'bg-primary text-on-primary border-primary' : 'bg-canvas text-ink border-hairline hover:bg-canvas-soft';
+      var extra = cantStart && seconds === 120 ? ' data-just-two="1"' : '';
+      return '<button class="inline-flex items-center h-8 px-3 text-xs font-medium rounded-[100px] no-underline border transition-colors ' + active + '" data-dur="' + seconds + '"' + extra + '>' + label + '</button>';
+    }
+
+    var durHtml = '<div class="flex items-center justify-center gap-2 mb-4">';
+    for (var di = 0; di < durationOptions.length; di++) {
+      durHtml += durBtn(durationOptions[di], durationLabels[di]);
+    }
+    durHtml += '</div>';
+
+    var justTwoHtml = '';
+    if (cantStart && isIdle) {
+      justTwoHtml = '<p class="text-xs text-mute text-center mb-4">Just getting started? The 2-minute option keeps it easy.</p>';
+    }
 
     section.innerHTML = `
       <div class="bg-canvas rounded-md p-6 md:p-8" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
@@ -820,19 +966,32 @@ import Footer from '../components/Footer.astro';
           <span class="font-mono text-xs text-mute tracking-normal uppercase">Resistance Timer</span>
         </div>
 
-        <p class="text-sm text-body leading-relaxed mb-6">If you don't feel like doing your habit today, commit to only 5 minutes.</p>
+        <p class="text-sm text-body leading-relaxed mb-6">If you don't feel like doing your habit today, commit to only ${timerSeconds / 60} minutes.</p>
 
         <div class="text-center">
+          ${isIdle ? durHtml : ''}
+          ${isIdle && cantStart ? justTwoHtml : ''}
           <div class="text-5xl font-semibold tracking-[-2.4px] text-ink tabular-nums mb-6">${formatTimer(timerSeconds)}</div>
           <div class="flex items-center justify-center gap-3">
-            ${!isRunning && !isPaused ? `<button id="act-timer-start" class="inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Start 5-Minute Timer</button>` : ''}
-            ${isRunning ? `<button id="act-timer-pause" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Pause</button>` : ''}
-            ${isPaused ? `<button id="act-timer-resume" class="inline-flex items-center h-10 px-5 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Resume</button>` : ''}
-            ${isRunning || isPaused ? `<button id="act-timer-reset" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Reset</button>` : ''}
+            ${isIdle ? '<button id="act-timer-start" class="inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Start Timer</button>' : ''}
+            ${isRunning ? '<button id="act-timer-pause" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Pause</button>' : ''}
+            ${isPaused ? '<button id="act-timer-resume" class="inline-flex items-center h-10 px-5 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Resume</button>' : ''}
+            ${isRunning || isPaused ? '<button id="act-timer-reset" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Reset</button>' : ''}
           </div>
         </div>
       </div>
     `;
+
+    document.querySelectorAll('[data-dur]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var secs = parseInt(btn.getAttribute('data-dur'), 10);
+        timerSeconds = secs;
+        timerStatus = 'idle';
+        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        saveTimerDuration(secs);
+        renderTimerState(section, plan);
+      });
+    });
 
     document.getElementById('act-timer-start')?.addEventListener('click', function () { startTimer(section, plan); });
     document.getElementById('act-timer-pause')?.addEventListener('click', function () { pauseTimer(section, plan); });
@@ -873,7 +1032,7 @@ import Footer from '../components/Footer.astro';
     } else {
       document.getElementById('act-back-to-timer')?.addEventListener('click', function () {
         currentTool = 'timer';
-        timerSeconds = 300;
+        timerSeconds = getSavedTimerDuration();
         timerStatus = 'idle';
         renderTimerState(section, plan);
       });
@@ -948,6 +1107,7 @@ import Footer from '../components/Footer.astro';
   function startTimer(section, plan) {
     if (timerInterval) return;
     timerStatus = 'running';
+    saveTimerState('running');
     timerInterval = setInterval(function () {
       timerSeconds--;
       if (timerSeconds <= 0) {
@@ -956,9 +1116,20 @@ import Footer from '../components/Footer.astro';
         timerInterval = null;
         timerStatus = 'finished';
         currentTool = 'timer-finished';
+        clearTimerState();
         saveTimerToHistory();
+        var timerMinutes = Math.round(getSavedTimerDuration() / 60);
+        if (timerMinutes > 0) {
+          var ckCheckIns = getSavedCheckIns();
+          var ckTodayStr = getTodayString();
+          var ckExisting = ckCheckIns[ckTodayStr] ? ckCheckIns[ckTodayStr].actualMinutes : 0;
+          saveCheckInMinutes(plan, ckExisting + timerMinutes);
+        }
         renderTimerFinished(section, plan);
       } else {
+        if (timerSeconds % 5 === 0) {
+          saveTimerState('running');
+        }
         renderTimerState(section, plan);
       }
     }, 1000);
@@ -971,12 +1142,14 @@ import Footer from '../components/Footer.astro';
       timerInterval = null;
     }
     timerStatus = 'paused';
+    saveTimerState('paused');
     renderTimerState(section, plan);
   }
 
   function resumeTimer(section, plan) {
     if (timerInterval) return;
     timerStatus = 'running';
+    saveTimerState('running');
     timerInterval = setInterval(function () {
       timerSeconds--;
       if (timerSeconds <= 0) {
@@ -985,9 +1158,20 @@ import Footer from '../components/Footer.astro';
         timerInterval = null;
         timerStatus = 'finished';
         currentTool = 'timer-finished';
+        clearTimerState();
         saveTimerToHistory();
+        var timerMinutes = Math.round(getSavedTimerDuration() / 60);
+        if (timerMinutes > 0) {
+          var ckCheckIns = getSavedCheckIns();
+          var ckTodayStr = getTodayString();
+          var ckExisting = ckCheckIns[ckTodayStr] ? ckCheckIns[ckTodayStr].actualMinutes : 0;
+          saveCheckInMinutes(plan, ckExisting + timerMinutes);
+        }
         renderTimerFinished(section, plan);
       } else {
+        if (timerSeconds % 5 === 0) {
+          saveTimerState('running');
+        }
         renderTimerState(section, plan);
       }
     }, 1000);
@@ -999,7 +1183,8 @@ import Footer from '../components/Footer.astro';
       clearInterval(timerInterval);
       timerInterval = null;
     }
-    timerSeconds = 300;
+    clearTimerState();
+    timerSeconds = getSavedTimerDuration();
     timerStatus = 'idle';
     currentTool = 'timer';
     renderTimerState(section, plan);
@@ -1013,6 +1198,7 @@ import Footer from '../components/Footer.astro';
       stopwatchSeconds++;
       if (stopwatchSeconds % 5 === 0) {
         saveStopwatchState('running');
+        renderCheckIn(plan);
       }
       renderStopwatchState(section, plan);
       renderSessionIndicator();
@@ -1040,6 +1226,7 @@ import Footer from '../components/Footer.astro';
       stopwatchSeconds++;
       if (stopwatchSeconds % 5 === 0) {
         saveStopwatchState('running');
+        renderCheckIn(plan);
       }
       renderStopwatchState(section, plan);
       renderSessionIndicator();
@@ -1067,7 +1254,7 @@ import Footer from '../components/Footer.astro';
     clearStopwatchState();
     stopwatchSeconds = 0;
     stopwatchStatus = 'idle';
-    timerSeconds = 300;
+    timerSeconds = getSavedTimerDuration();
     timerStatus = 'idle';
     currentTool = 'timer';
     renderActionTools(plan);
@@ -1103,8 +1290,8 @@ import Footer from '../components/Footer.astro';
       } else {
         html += `
           <div class="bg-canvas rounded-md p-4" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
-            <p class="text-sm text-body leading-relaxed mb-3">Missed yesterday? That's normal. Here's today's target: <strong>${plan.target} min</strong>. The 5-minute resistance timer is ready if you need it.</p>
-            <button id="btn-start-timer-recovery" class="inline-flex items-center h-9 px-4 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Start 5-Minute Timer</button>
+            <p class="text-sm text-body leading-relaxed mb-3">Missed yesterday? That's normal. Here's today's target: <strong>${plan.target} min</strong>. The resistance timer is ready if you need it.</p>
+            <button id="btn-start-timer-recovery" class="inline-flex items-center h-9 px-4 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Start Timer</button>
           </div>
         `;
       }
@@ -1193,7 +1380,7 @@ import Footer from '../components/Footer.astro';
         clearInterval(timerInterval);
         timerInterval = null;
       }
-      timerSeconds = 300;
+      timerSeconds = getSavedTimerDuration();
       timerStatus = 'idle';
       currentTool = 'timer';
       renderActionTools(plan);
@@ -1411,6 +1598,7 @@ import Footer from '../components/Footer.astro';
       if (savedPlan && savedPlan.habit) {
         evaluateAdjustment(savedPlan);
         restoreStopwatchState();
+        restoreTimerState();
         renderPlan(savedPlan);
         return;
       }
