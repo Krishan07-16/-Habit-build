@@ -12,17 +12,17 @@ const { currentPage = 'home' } = Astro.props;
     <div class="flex items-center gap-4">
       <a
         href="/assessment"
-        class="text-sm text-body no-underline px-2 py-1 rounded-full hover:text-ink transition-colors"
+        class="text-sm no-underline px-2 py-1 rounded-full transition-colors ${currentPage === 'assessment' ? 'text-ink font-medium bg-canvas-soft' : 'text-body hover:text-ink'}"
         >Assessment</a
       >
       <a
         href="/plan"
-        class="text-sm text-body no-underline px-2 py-1 rounded-full hover:text-ink transition-colors"
+        class="text-sm no-underline px-2 py-1 rounded-full transition-colors ${currentPage === 'plan' ? 'text-ink font-medium bg-canvas-soft' : 'text-body hover:text-ink'}"
         >Plan</a
       >
       <a
         href="/progress"
-        class="text-sm text-body no-underline px-2 py-1 rounded-full hover:text-ink transition-colors"
+        class="text-sm no-underline px-2 py-1 rounded-full transition-colors ${currentPage === 'progress' ? 'text-ink font-medium bg-canvas-soft' : 'text-body hover:text-ink'}"
         >Progress</a
       >
       <a

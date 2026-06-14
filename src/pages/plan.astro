@@ -22,6 +22,11 @@ import Footer from '../components/Footer.astro';
     50% { filter: drop-shadow(0 0 10px rgba(0,112,243,0.5)); }
   }
   .ring-glow { animation: ring-glow-pulse 2s ease-in-out infinite; }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
 </style>
 
 <script>
@@ -392,6 +397,8 @@ import Footer from '../components/Footer.astro';
         </div>
       </div>
 
+      <div id="session-indicator" class="mt-8"></div>
+
       <div id="action-tools" class="mt-8"></div>
 
       <div id="checkin-section"></div>
@@ -414,6 +421,8 @@ import Footer from '../components/Footer.astro';
     renderCheckIn(plan);
     renderActionTools(plan);
     renderAdjustmentHistory();
+    renderSessionIndicator();
+    kickstartStopwatch(plan);
   }
 
   function renderError(message) {
@@ -639,6 +648,7 @@ import Footer from '../components/Footer.astro';
   }
 
   function saveStopwatchSession(plan, durationSeconds) {
+    clearStopwatchState();
     const sessions = getStopwatchSessions();
     sessions.push({ date: getTodayString(), durationSeconds: durationSeconds, timestamp: new Date().toISOString() });
     localStorage.setItem(STOPWATCH_SESSIONS_KEY, JSON.stringify(sessions));
@@ -712,6 +722,22 @@ import Footer from '../components/Footer.astro';
     }
   }
 
+  function kickstartStopwatch(plan) {
+    if (stopwatchStatus === 'running' && !stopwatchInterval) {
+      var section = document.getElementById('action-tools');
+      if (section) {
+        stopwatchInterval = setInterval(function () {
+          stopwatchSeconds++;
+          if (stopwatchSeconds % 5 === 0) {
+            saveStopwatchState('running');
+          }
+          renderStopwatchState(section, plan);
+          renderSessionIndicator();
+        }, 1000);
+      }
+    }
+  }
+
   function renderSessionIndicator() {
     var el = document.getElementById('session-indicator');
     if (!el) return;
@@ -719,7 +745,7 @@ import Footer from '../components/Footer.astro';
     if (stopwatchStatus === 'running' || stopwatchStatus === 'paused') {
       el.innerHTML = `
         <div class="flex items-center gap-2 px-4 py-2 mb-4 rounded-md bg-primary/5" style="box-shadow:0 0 0 1px rgba(0,112,243,0.15) inset;">
-          <span class="w-2 h-2 rounded-full ${stopwatchStatus === 'running' ? 'bg-success' : 'bg-mute'}" style="${stopwatchStatus === 'running' ? 'animation:pulse 1.5s ease-in-out infinite' : ''}"></span>
+          <span class="w-2 h-2 rounded-full ${stopwatchStatus === 'running' ? 'bg-success pulse-dot' : 'bg-mute'}"></span>
           <span class="text-xs font-medium text-primary">Session ${stopwatchStatus === 'running' ? 'In Progress' : 'Paused'}</span>
           <span class="text-xs text-mute tabular-nums ml-auto">${formatStopwatch(stopwatchSeconds)}</span>
         </div>
@@ -935,6 +961,7 @@ import Footer from '../components/Footer.astro';
         saveStopwatchState('running');
       }
       renderStopwatchState(section, plan);
+      renderSessionIndicator();
     }, 1000);
     renderStopwatchState(section, plan);
     renderSessionIndicator();
@@ -961,6 +988,7 @@ import Footer from '../components/Footer.astro';
         saveStopwatchState('running');
       }
       renderStopwatchState(section, plan);
+      renderSessionIndicator();
     }, 1000);
     renderStopwatchState(section, plan);
     renderSessionIndicator();
@@ -1249,6 +1277,7 @@ import Footer from '../components/Footer.astro';
 
       if (savedPlan && savedPlan.habit) {
         evaluateAdjustment(savedPlan);
+        restoreStopwatchState();
         renderPlan(savedPlan);
         return;
       }
