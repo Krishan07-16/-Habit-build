@@ -1124,25 +1124,29 @@ import Footer from '../components/Footer.astro';
         </div>
       `;
     } else {
-      html += `
-        <div class="py-3">
-          <label for="checkin-minutes" class="block text-sm text-body mb-3">How many minutes did you spend today?</label>
-          <div class="flex items-center gap-3">
-            <input
-              type="number"
-              id="checkin-minutes"
-              min="0"
-              max="999"
-              placeholder="Minutes"
-              class="flex-1 h-10 px-3 bg-canvas text-ink text-sm rounded-sm border border-hairline outline-none focus:border-hairline-strong transition-colors"
-            />
-            <span class="text-sm text-body">min</span>
+      var hasSwTime = stopwatchSeconds > 0;
+      html += '<div class="py-3">';
+      if (hasSwTime) {
+        html += `
+          <div class="text-center mb-4">
+            <div class="text-2xl font-semibold tracking-[-0.96px] text-ink tabular-nums">${formatStopwatch(stopwatchSeconds)}</div>
+            <p class="text-xs text-mute mt-1">Current session</p>
           </div>
-          <button id="btn-save-checkin" class="mt-4 inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">
-            Save Progress
-          </button>
-        </div>
-      `;
+          <div class="flex flex-col gap-3">
+            <button id="btn-save-sw-checkin" class="inline-flex items-center justify-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Save to Check-in</button>
+            <button id="btn-switch-stopwatch" class="inline-flex items-center justify-center h-10 px-6 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Back to Stopwatch</button>
+          </div>
+        `;
+      } else {
+        html += `
+          <p class="text-sm text-body text-center mb-4">How was your habit time today?</p>
+          <div class="flex flex-col gap-3">
+            ${currentPhase >= 3 ? '<button id="btn-start-sw-checkin" class="inline-flex items-center justify-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Start Stopwatch</button>' : ''}
+            <button id="btn-quick-log" class="inline-flex items-center justify-center h-10 px-6 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Quick Log</button>
+          </div>
+        `;
+      }
+      html += '</div>';
     }
 
     html += '</div>';
@@ -1151,14 +1155,26 @@ import Footer from '../components/Footer.astro';
 
     section.innerHTML = html;
 
-    const btnSave = document.getElementById('btn-save-checkin');
-    const input = document.getElementById('checkin-minutes');
-    if (btnSave && input) {
-      btnSave.addEventListener('click', function () { handleCheckInSubmit(plan, input); });
-      input.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') handleCheckInSubmit(plan, input);
-      });
-    }
+    document.getElementById('btn-start-sw-checkin')?.addEventListener('click', function () {
+      currentTool = 'stopwatch';
+      stopwatchStatus = 'idle';
+      stopwatchSeconds = 0;
+      renderActionTools(plan);
+      renderSessionIndicator();
+      var toolsSection = document.getElementById('action-tools');
+      if (toolsSection) toolsSection.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    document.getElementById('btn-quick-log')?.addEventListener('click', function () { handleQuickLog(plan); });
+    document.getElementById('btn-save-sw-checkin')?.addEventListener('click', function () { handleSaveSwCheckin(plan); });
+
+    document.getElementById('btn-switch-stopwatch')?.addEventListener('click', function () {
+      currentTool = 'stopwatch';
+      renderActionTools(plan);
+      renderSessionIndicator();
+      var toolsSection = document.getElementById('action-tools');
+      if (toolsSection) toolsSection.scrollIntoView({ behavior: 'smooth' });
+    });
 
     document.getElementById('btn-start-timer-recovery')?.addEventListener('click', function () {
       if (timerInterval) {
