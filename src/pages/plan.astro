@@ -95,9 +95,21 @@ import Footer from '../components/Footer.astro';
     localStorage.setItem(ADJUSTMENTS_KEY, JSON.stringify(adjustments));
   }
 
+  function getSavedTimerDuration() {
+    try {
+      var val = parseInt(localStorage.getItem(TIMER_DURATION_KEY), 10);
+      return val > 0 ? val : 300;
+    } catch { return 300; }
+  }
+
+  function saveTimerDuration(seconds) {
+    try { localStorage.setItem(TIMER_DURATION_KEY, String(seconds)); } catch {}
+  }
+
   const TIMER_HISTORY_KEY = 'habit-build-timer-history';
   const STOPWATCH_SESSIONS_KEY = 'habit-build-stopwatch-sessions';
   const STOPWATCH_STATE_KEY = 'habit-build-stopwatch-state';
+  const TIMER_DURATION_KEY = 'habit-build-timer-duration';
 
   function getFeedback(actual, target, minimum, maximum) {
     if (actual < minimum) {
@@ -1227,6 +1239,45 @@ import Footer from '../components/Footer.astro';
         ${rows}
       </div>
     `;
+  }
+
+  function saveCheckInMinutes(plan, minutes) {
+    var todayStr = getTodayString();
+    var checkIns = getSavedCheckIns();
+    var feedback = getFeedback(minutes, plan.target, plan.minimum, plan.maximum);
+
+    checkIns[todayStr] = {
+      date: todayStr,
+      actualMinutes: minutes,
+      feedback: feedback,
+      target: plan.target,
+      minimum: plan.minimum,
+      maximum: plan.maximum,
+    };
+
+    saveCheckIns(checkIns);
+
+    var adjusted = evaluateAdjustment(plan);
+    if (adjusted) {
+      updatePlanDisplay(plan);
+    }
+
+    if (isPlanComplete(plan)) {
+      renderPlan(plan);
+    } else {
+      renderCheckIn(plan);
+      renderAdjustmentHistory();
+    }
+  }
+
+  function handleQuickLog(plan) {
+    saveCheckInMinutes(plan, plan.target);
+  }
+
+  function handleSaveSwCheckin(plan) {
+    var minutes = Math.round(stopwatchSeconds / 60);
+    if (minutes < 1) minutes = 1;
+    saveCheckInMinutes(plan, minutes);
   }
 
   function handleCheckInSubmit(plan, input) {
