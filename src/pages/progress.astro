@@ -1,0 +1,389 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout title="Progress — Habit Build" description="Your daily, weekly, and monthly habit progress.">
+  <Nav currentPage="progress" />
+
+  <main class="flex-1">
+    <div class="max-w-[600px] mx-auto px-4 md:px-6 py-12 md:py-16">
+      <div id="app"></div>
+    </div>
+  </main>
+
+  <Footer />
+</Layout>
+
+<script>
+  const ASSESSMENT_KEY = 'habit-build-assessment';
+  const PLAN_KEY = 'habit-build-plan';
+  const CHECKINS_KEY = 'habit-build-checkins';
+
+  function getSavedPlan() {
+    try {
+      const raw = localStorage.getItem(PLAN_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  function getSavedCheckIns() {
+    try {
+      const raw = localStorage.getItem(CHECKINS_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  }
+
+  function getTodayString() {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function formatDate(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  function getWeekStart() {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(now);
+    monday.setDate(diff);
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  }
+
+  function getDateString(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function getCurrentDay(startDate) {
+    const start = new Date(startDate + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
+    return Math.max(1, Math.min(30, diff));
+  }
+
+  function daysSince(startDate) {
+    const start = new Date(startDate + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
+  }
+
+  function escapeHtml(str) {
+    if (typeof str !== 'string') return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  function renderProgress() {
+    const app = document.getElementById('app');
+    if (!app) return;
+
+    const plan = getSavedPlan();
+    const checkIns = getSavedCheckIns();
+
+    if (!plan || !plan.habit) {
+      app.innerHTML = `
+        <div class="text-center mb-10">
+          <div class="w-12 h-12 bg-canvas-soft-2 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-body">
+              <path d="M12 20V10M18 20V4M6 20v-4"/>
+            </svg>
+          </div>
+          <h1 class="text-2xl md:text-3xl font-semibold tracking-[-1.28px] text-ink mb-2">No plan yet</h1>
+          <p class="text-sm text-body mb-6">Complete the assessment to get a personalized 30-day plan and start tracking your progress.</p>
+          <a href="/assessment" class="inline-flex items-center h-12 px-6 bg-primary text-on-primary text-base font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Take Assessment</a>
+        </div>
+      `;
+      return;
+    }
+
+    const todayStr = getTodayString();
+    const todayEntry = checkIns[todayStr] || null;
+
+    // Weekly calculations
+    const weekStart = getWeekStart();
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + i);
+      const ds = getDateString(d);
+      weekDays.push({ date: ds, entry: checkIns[ds] || null });
+    }
+
+    let weeklyTotal = 0;
+    let weeklyActiveDays = 0;
+    for (const wd of weekDays) {
+      if (wd.entry) {
+        weeklyTotal += wd.entry.actualMinutes;
+        weeklyActiveDays++;
+      }
+    }
+    const weeklyAvg = weeklyActiveDays > 0 ? Math.round(weeklyTotal / 7) : 0;
+    const weeklyConsistencyPct = Math.round((weeklyActiveDays / 7) * 100);
+
+    // Monthly / plan calculations
+    const planStart = plan.startDate ? plan.startDate.split('T')[0] : getTodayString();
+    const dayNum = getCurrentDay(planStart);
+
+    let monthlyTotal = 0;
+    let monthlyActiveDays = 0;
+    const planDays = Math.min(30, daysSince(planStart));
+    for (let i = 0; i < planDays; i++) {
+      const d = new Date(planStart + 'T00:00:00');
+      d.setDate(d.getDate() + i);
+      const ds = getDateString(d);
+      const entry = checkIns[ds];
+      if (entry) {
+        monthlyTotal += entry.actualMinutes;
+        monthlyActiveDays++;
+      }
+    }
+
+    // Consistency score
+    const totalDays = Math.max(1, planDays);
+    const consistencyScore = Math.round((monthlyActiveDays / totalDays) * 100);
+
+    // Daily status
+    let dailyStatus = 'Not Started';
+    let dailyStatusClass = 'text-mute';
+    let dailyPct = 0;
+    if (todayEntry) {
+      dailyPct = Math.min(100, Math.round((todayEntry.actualMinutes / plan.target) * 100));
+      if (todayEntry.actualMinutes >= plan.target) {
+        dailyStatus = 'Target Achieved';
+        dailyStatusClass = 'text-success';
+      } else if (todayEntry.actualMinutes > 0) {
+        dailyStatus = 'In Progress';
+        dailyStatusClass = 'text-body';
+      }
+    }
+
+    // Check if yesterday was missed
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = getDateString(yesterday);
+    const yesterdayMissed = planDays > 1 && !checkIns[yesterdayStr] && !todayEntry;
+
+    let html = '';
+
+    // Missed days message
+    if (yesterdayMissed) {
+      html += `
+        <div class="rounded-md p-4 mb-6 text-center" style="background-color:#ffefcf;box-shadow:0 0 0 1px rgba(0,0,0,0.06) inset;">
+          <p class="text-sm font-medium" style="color:#ab570a;">Consistency is built over time. Continue today.</p>
+        </div>
+      `;
+    }
+
+    // Title
+    html += `
+      <div class="text-center mb-10">
+        <h1 class="text-2xl md:text-3xl font-semibold tracking-[-1.28px] text-ink mb-2">Your Progress</h1>
+        <p class="text-sm text-body">Track your consistency over time.</p>
+      </div>
+    `;
+
+    // Daily Progress
+    html += `
+      <div class="bg-canvas rounded-md p-6 md:p-8 space-y-5 mb-6" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-xs text-mute tracking-normal uppercase">Daily Progress</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 py-3 border-b border-hairline">
+          <div class="text-center">
+            <div class="text-xl font-semibold tracking-[-0.96px] text-ink">${plan.target}</div>
+            <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Target</div>
+          </div>
+          <div class="text-center">
+            <div class="text-xl font-semibold tracking-[-0.96px] text-ink">${plan.minimum}</div>
+            <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Minimum</div>
+          </div>
+          <div class="text-center">
+            <div class="text-xl font-semibold tracking-[-0.96px] text-ink">${plan.maximum}</div>
+            <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Maximum</div>
+          </div>
+        </div>
+
+        <div class="py-2">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm text-body">Today's Progress</span>
+            <span class="text-sm text-ink font-medium">${todayEntry ? todayEntry.actualMinutes : 0} min</span>
+          </div>
+          <div class="h-2 bg-canvas-soft-2 rounded-full overflow-hidden">
+            <div class="h-full bg-primary rounded-full transition-all duration-500" style="width:${dailyPct}%"></div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between py-2">
+          <span class="text-sm text-body">Status</span>
+          <span class="text-sm font-medium ${dailyStatusClass}">${dailyStatus}</span>
+        </div>
+
+        ${todayEntry ? `
+          <div class="bg-canvas-soft rounded-md p-3 text-center">
+            <p class="text-sm text-body leading-relaxed">${escapeHtml(todayEntry.feedback)}</p>
+          </div>
+        ` : `
+          <div class="bg-canvas-soft rounded-md p-3 text-center">
+            <p class="text-sm text-body leading-relaxed">Start your habit today to begin tracking progress.</p>
+          </div>
+        `}
+      </div>
+    `;
+
+    // Weekly Progress
+    html += `
+      <div class="bg-canvas rounded-md p-6 md:p-8 space-y-5 mb-6" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-xs text-mute tracking-normal uppercase">Weekly Progress</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 py-3 border-b border-hairline">
+          <div class="text-center">
+            <div class="text-xl font-semibold tracking-[-0.96px] text-ink">${weeklyTotal}</div>
+            <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Total min</div>
+          </div>
+          <div class="text-center">
+            <div class="text-xl font-semibold tracking-[-0.96px] text-ink">${weeklyAvg}</div>
+            <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Avg min/day</div>
+          </div>
+        </div>
+
+        <div class="py-2">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm text-body">Active Days</span>
+            <span class="text-sm text-ink font-medium">${weeklyActiveDays}/7</span>
+          </div>
+          <div class="h-2 bg-canvas-soft-2 rounded-full overflow-hidden">
+            <div class="h-full bg-primary rounded-full transition-all duration-500" style="width:${weeklyConsistencyPct}%"></div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between py-2">
+          <span class="text-sm text-body">Consistency</span>
+          <span class="text-sm font-medium text-ink">${weeklyConsistencyPct}%</span>
+        </div>
+
+        <!-- Mini day bars -->
+        <div class="pt-2">
+          <div class="flex items-end gap-1 h-16">
+            ${weekDays.map((wd, i) => {
+              const pct = wd.entry ? Math.min(100, Math.round((wd.entry.actualMinutes / plan.target) * 100)) : 0;
+              const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+              return `
+                <div class="flex-1 flex flex-col items-center gap-1">
+                  <div class="w-full bg-canvas-soft-2 rounded-sm overflow-hidden" style="height:40px">
+                    <div class="w-full bg-primary rounded-sm transition-all duration-500" style="height:${pct}%"></div>
+                  </div>
+                  <span class="font-mono text-xs text-mute">${dayNames[i]}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Monthly Progress
+    html += `
+      <div class="bg-canvas rounded-md p-6 md:p-8 space-y-5 mb-6" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-xs text-mute tracking-normal uppercase">Plan Progress</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 py-3 border-b border-hairline">
+          <div class="text-center">
+            <div class="text-xl font-semibold tracking-[-0.96px] text-ink">${monthlyTotal}</div>
+            <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Total min</div>
+          </div>
+          <div class="text-center">
+            <div class="text-xl font-semibold tracking-[-0.96px] text-ink">${monthlyActiveDays}</div>
+            <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Active days</div>
+          </div>
+          <div class="text-center">
+            <div class="text-xl font-semibold tracking-[-0.96px] text-ink">Day ${dayNum}</div>
+            <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">of 30</div>
+          </div>
+        </div>
+
+        <div class="py-2">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm text-body">Plan Progress</span>
+            <span class="text-sm text-ink font-medium">${Math.round((dayNum / 30) * 100)}%</span>
+          </div>
+          <div class="h-2 bg-canvas-soft-2 rounded-full overflow-hidden">
+            <div class="h-full bg-primary rounded-full transition-all duration-500" style="width:${Math.round((dayNum / 30) * 100)}%"></div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Consistency Score
+    html += `
+      <div class="bg-canvas rounded-md p-6 md:p-8 space-y-5" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-xs text-mute tracking-normal uppercase">Consistency Score</span>
+        </div>
+
+        <div class="text-center py-4">
+          <div class="text-4xl font-semibold tracking-[-1.28px] text-ink mb-1">${consistencyScore}%</div>
+          <p class="text-sm text-body">Based on active days and daily participation</p>
+        </div>
+
+        <div class="h-2 bg-canvas-soft-2 rounded-full overflow-hidden">
+          <div class="h-full bg-primary rounded-full transition-all duration-500" style="width:${consistencyScore}%"></div>
+        </div>
+
+        <div class="bg-canvas-soft rounded-md p-3 text-center mt-2">
+          ${consistencyScore >= 80
+            ? '<p class="text-sm text-body leading-relaxed">Great consistency. Keep showing up.</p>'
+            : consistencyScore >= 50
+            ? '<p class="text-sm text-body leading-relaxed">You are building momentum. Consistency grows over time.</p>'
+            : '<p class="text-sm text-body leading-relaxed">Every day is a new opportunity. Start small and stay consistent.</p>'
+          }
+        </div>
+      </div>
+    `;
+
+    // Recent activity mini list
+    const recentEntries = Object.entries(checkIns)
+      .filter(function (_ref) { return _ref[0] !== todayStr; })
+      .sort(function (a, b) { return b[0].localeCompare(a[0]); })
+      .slice(0, 5);
+
+    if (recentEntries.length > 0) {
+      html += `
+        <div class="bg-canvas rounded-md p-6 md:p-8 space-y-4 mt-6" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+          <h2 class="text-lg font-semibold tracking-[-0.6px] text-ink">Recent Activity</h2>
+          ${recentEntries.map(function (_ref2) {
+            const date = _ref2[0];
+            const entry = _ref2[1];
+            return `
+              <div class="flex items-center justify-between py-2 border-b border-hairline last:border-b-0">
+                <span class="text-sm text-body">${formatDate(date)}</span>
+                <span class="text-sm text-ink font-medium">${entry.actualMinutes} min</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    app.innerHTML = html;
+  }
+
+  renderProgress();
+</script>

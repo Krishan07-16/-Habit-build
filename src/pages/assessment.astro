@@ -1,0 +1,353 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout title="Assessment — Habit Build" description="Discover your habit-building profile with our quick assessment.">
+  <Nav currentPage="assessment" />
+
+  <main class="flex-1">
+    <div class="max-w-[600px] mx-auto px-4 md:px-6 py-12 md:py-16">
+      <div id="app"></div>
+    </div>
+  </main>
+
+  <Footer />
+</Layout>
+
+<script>
+  const questions = [
+    {
+      id: 'habit',
+      type: 'text',
+      question: 'What would you like to make a habit?',
+      placeholder: 'e.g., reading, coding, exercise, meditation...',
+      help: 'Pick something specific you want to work on.',
+    },
+    {
+      id: 'time',
+      type: 'radio',
+      question: 'How much time do you currently spend on it?',
+      help: 'Be honest — this helps us set the right starting point.',
+      options: [
+        'None',
+        'Less than 15 minutes',
+        '15–30 minutes',
+        '30–60 minutes',
+        'More than 60 minutes',
+      ],
+    },
+    {
+      id: 'consistency',
+      type: 'radio',
+      question: 'How consistent have you been over the past month?',
+      help: 'Think about the last 30 days. No judgment either way.',
+      options: [
+        'Not at all',
+        'A few times',
+        'About half the days',
+        'Most days',
+        'Every day',
+      ],
+    },
+    {
+      id: 'obstacles',
+      type: 'checkbox',
+      question: 'What typically gets in the way?',
+      help: 'Select all that apply.',
+      options: [
+        'I know what to do but can\'t start',
+        'It feels overwhelming',
+        'I get distracted',
+        'I lack motivation',
+        'I feel too tired',
+        'I don\'t have enough time',
+        'I simply forget',
+        'Nothing specific',
+      ],
+    },
+    {
+      id: 'situation',
+      type: 'radio',
+      question: 'What best describes your current situation?',
+      help: 'This helps us tailor the approach to where you are right now.',
+      options: [
+        'I\'m just getting started',
+        'I\'ve tried before but struggled to stick with it',
+        'I\'m somewhat consistent but want to improve',
+        'I\'m doing well but need more structure',
+      ],
+    },
+    {
+      id: 'goal',
+      type: 'textarea',
+      question: 'What is your biggest goal for the next 30 days?',
+      placeholder: 'e.g., Read for 20 minutes every day, write 500 words daily...',
+      help: 'Think about what success looks like in one month.',
+    },
+  ];
+
+  const STORAGE_KEY = 'habit-build-assessment';
+
+  function getSavedAnswers() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveAnswers(answers) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
+  }
+
+  function clearAnswers() {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  function render() {
+    const answers = getSavedAnswers();
+    const urlParams = new URLSearchParams(window.location.search);
+    const stepParam = parseInt(urlParams.get('step'), 10);
+    const step = !isNaN(stepParam) && stepParam >= 1 && stepParam <= questions.length + 1 ? stepParam : 1;
+    const isComplete = step === questions.length + 1;
+
+    const app = document.getElementById('app');
+    if (!app) return;
+
+    if (isComplete) {
+      renderSummary(app, answers);
+      return;
+    }
+
+    renderQuestion(app, step, answers, questions[step - 1]);
+  }
+
+  function renderProgress(current, total) {
+    const pct = ((current - 1) / total) * 100;
+    return `
+      <div class="mb-10">
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-mono text-xs text-mute tracking-normal">Step ${current} of ${total}</span>
+          <span class="font-mono text-xs text-mute tracking-normal">${Math.round(pct)}%</span>
+        </div>
+        <div class="h-1 bg-canvas-soft-2 rounded-full overflow-hidden">
+          <div class="h-full bg-primary rounded-full transition-all duration-500" style="width:${pct}%"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderQuestion(app, step, answers, q) {
+    const saved = answers[q.id];
+    const total = questions.length;
+
+    let inputHtml = '';
+
+    if (q.type === 'text') {
+      inputHtml = `
+        <input
+          id="input-${q.id}"
+          type="text"
+          value="${escapeHtml(saved || '')}"
+          placeholder="${escapeHtml(q.placeholder || '')}"
+          class="w-full h-12 px-3 bg-canvas text-ink text-base border border-hairline rounded-sm outline-none transition-colors focus:border-ink"
+          autocomplete="off"
+        />
+      `;
+    } else if (q.type === 'textarea') {
+      inputHtml = `
+        <textarea
+          id="input-${q.id}"
+          rows="3"
+          placeholder="${escapeHtml(q.placeholder || '')}"
+          class="w-full px-3 py-3 bg-canvas text-ink text-base border border-hairline rounded-sm outline-none resize-none transition-colors focus:border-ink"
+        >${escapeHtml(saved || '')}</textarea>
+      `;
+    } else if (q.type === 'radio') {
+      inputHtml = q.options.map((opt) => {
+        const checked = saved === opt ? 'checked' : '';
+        return `
+          <label class="flex items-center gap-3 px-4 h-12 bg-canvas border border-hairline rounded-sm cursor-pointer transition-colors hover:border-ink has-[:checked]:border-ink has-[:checked]:bg-canvas-soft">
+            <input type="radio" name="${q.id}" value="${escapeHtml(opt)}" ${checked} class="appearance-none w-4 h-4 border-2 border-hairline-strong rounded-full shrink-0 checked:border-[5px] checked:border-ink transition-all" />
+            <span class="text-sm text-ink">${escapeHtml(opt)}</span>
+          </label>
+        `;
+      }).join('');
+    } else if (q.type === 'checkbox') {
+      inputHtml = q.options.map((opt) => {
+        const checked = Array.isArray(saved) && saved.includes(opt) ? 'checked' : '';
+        return `
+          <label class="flex items-center gap-3 px-4 h-12 bg-canvas border border-hairline rounded-sm cursor-pointer transition-colors hover:border-ink has-[:checked]:border-ink has-[:checked]:bg-canvas-soft">
+            <input type="checkbox" name="${q.id}" value="${escapeHtml(opt)}" ${checked} class="appearance-none w-4 h-4 border-2 border-hairline-strong rounded-sm shrink-0 checked:bg-ink checked:border-ink transition-all" />
+            <span class="text-sm text-ink">${escapeHtml(opt)}</span>
+          </label>
+        `;
+      }).join('');
+    }
+
+    const isLast = step === total;
+
+    app.innerHTML = `
+      ${renderProgress(step, total)}
+      <div class="bg-canvas rounded-md p-6 md:p-8" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+        <h2 class="text-xl md:text-2xl font-semibold tracking-[-0.96px] text-ink mb-2">${escapeHtml(q.question)}</h2>
+        ${q.help ? `<p class="text-sm text-body mb-6">${escapeHtml(q.help)}</p>` : ''}
+        <div class="space-y-2">
+          ${inputHtml}
+        </div>
+        <div class="flex items-center justify-between mt-8">
+          <button id="btn-back" class="inline-flex items-center h-10 px-4 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft ${step === 1 ? 'invisible' : ''}">Back</button>
+          <button id="btn-next" class="inline-flex items-center h-10 px-5 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">${isLast ? 'Complete' : 'Next'}</button>
+        </div>
+      </div>
+    `;
+
+    // Focus input if text type
+    const textInput = document.getElementById(`input-${q.id}`);
+    if (textInput && (q.type === 'text' || q.type === 'textarea')) {
+      setTimeout(() => textInput.focus(), 100);
+    }
+
+    // Event listeners
+    document.getElementById('btn-next')?.addEventListener('click', () => handleNext(step, q));
+    document.getElementById('btn-back')?.addEventListener('click', () => handleBack(step));
+
+    // Enter key for text inputs
+    if (textInput) {
+      textInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && q.type === 'text') {
+          e.preventDefault();
+          handleNext(step, q);
+        }
+      });
+    }
+  }
+
+  function collectAnswer(step, q) {
+    if (q.type === 'text') {
+      const el = document.getElementById(`input-${q.id}`);
+      return el ? el.value.trim() : '';
+    }
+    if (q.type === 'textarea') {
+      const el = document.getElementById(`input-${q.id}`);
+      return el ? el.value.trim() : '';
+    }
+    if (q.type === 'radio') {
+      const checked = document.querySelector(`input[name="${q.id}"]:checked`);
+      return checked ? checked.value : '';
+    }
+    if (q.type === 'checkbox') {
+      const checked = document.querySelectorAll(`input[name="${q.id}"]:checked`);
+      return Array.from(checked).map((el) => el.value);
+    }
+    return '';
+  }
+
+  function validateAnswer(value, q) {
+    if (q.type === 'checkbox') {
+      return Array.isArray(value) && value.length > 0;
+    }
+    if (q.type === 'radio') {
+      return typeof value === 'string' && value.length > 0;
+    }
+    return typeof value === 'string' && value.length > 0;
+  }
+
+  function handleNext(step, q) {
+    const value = collectAnswer(step, q);
+    if (!validateAnswer(value, q)) return;
+
+    const answers = getSavedAnswers();
+    answers[q.id] = value;
+    saveAnswers(answers);
+
+    if (step === questions.length) {
+      window.location.href = '/plan';
+    } else {
+      navigateTo(step + 1);
+    }
+  }
+
+  function handleBack(step) {
+    const q = questions[step - 1];
+    const value = collectAnswer(step, q);
+    const answers = getSavedAnswers();
+    if (validateAnswer(value, q)) {
+      answers[q.id] = value;
+      saveAnswers(answers);
+    }
+    navigateTo(step - 1);
+  }
+
+  function navigateTo(step) {
+    const params = new URLSearchParams(window.location.search);
+    params.set('step', step.toString());
+    window.history.pushState({ step }, '', `?${params.toString()}`);
+    render();
+  }
+
+  function renderSummary(app, answers) {
+    const labels = {
+      habit: 'Habit',
+      time: 'Current time',
+      consistency: 'Past month consistency',
+      obstacles: 'Common obstacles',
+      situation: 'Current situation',
+      goal: '30-day goal',
+    };
+
+    const items = questions.map((q) => {
+      let val = answers[q.id];
+      if (!val || (Array.isArray(val) && val.length === 0)) {
+        val = 'Not answered';
+      } else if (Array.isArray(val)) {
+        val = val.join(', ');
+      }
+      return { label: labels[q.id], value: val };
+    });
+
+    app.innerHTML = `
+      <div class="text-center mb-10">
+        <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl md:text-3xl font-semibold tracking-[-1.28px] text-ink mb-2">Assessment Complete</h1>
+        <p class="text-sm text-body">Here is a summary of your responses. A personalized 30-day plan is being prepared.</p>
+      </div>
+
+      <div class="bg-canvas rounded-md p-6 md:p-8" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+        ${items.map((item) => `
+          <div class="flex items-start gap-4 py-3 ${items.indexOf(item) < items.length - 1 ? 'border-b border-hairline' : ''}">
+            <span class="w-24 shrink-0 font-mono text-xs text-mute tracking-normal uppercase pt-0.5">${escapeHtml(item.label)}</span>
+            <span class="text-sm text-ink">${escapeHtml(item.value)}</span>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="flex items-center justify-center mt-8 gap-3">
+        <button id="btn-restart" class="inline-flex items-center h-10 px-4 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Start Over</button>
+      </div>
+    `;
+
+    document.getElementById('btn-restart')?.addEventListener('click', () => {
+      clearAnswers();
+      navigateTo(1);
+    });
+  }
+
+  function escapeHtml(str) {
+    if (typeof str !== 'string') return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  // Handle browser back/forward
+  window.addEventListener('popstate', () => render());
+
+  // Initial render
+  render();
+</script>

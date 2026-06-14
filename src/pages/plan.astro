@@ -1,0 +1,742 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout title="Your Plan — Habit Build" description="Your personalized 30-day consistency plan.">
+  <Nav currentPage="plan" />
+
+  <main class="flex-1">
+    <div class="max-w-[600px] mx-auto px-4 md:px-6 py-12 md:py-16">
+      <div id="app"></div>
+    </div>
+  </main>
+
+  <Footer />
+</Layout>
+
+<script>
+  const ASSESSMENT_KEY = 'habit-build-assessment';
+  const PLAN_KEY = 'habit-build-plan';
+
+  function getAssessmentAnswers() {
+    try {
+      const raw = localStorage.getItem(ASSESSMENT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function getSavedPlan() {
+    try {
+      const raw = localStorage.getItem(PLAN_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function savePlan(plan) {
+    localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
+  }
+
+  const CHECKINS_KEY = 'habit-build-checkins';
+
+  function getDateString(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function getTodayString() {
+    return getDateString(new Date());
+  }
+
+  function getSavedCheckIns() {
+    try {
+      const raw = localStorage.getItem(CHECKINS_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveCheckIns(checkIns) {
+    localStorage.setItem(CHECKINS_KEY, JSON.stringify(checkIns));
+  }
+
+  const TIMER_HISTORY_KEY = 'habit-build-timer-history';
+  const STOPWATCH_SESSIONS_KEY = 'habit-build-stopwatch-sessions';
+
+  function getFeedback(actual, target, minimum, maximum) {
+    if (actual < minimum) {
+      return 'Good job showing up today. Consistency matters more than perfection. Try again tomorrow.';
+    }
+    if (actual < target) {
+      return "You're building momentum. Keep going.";
+    }
+    if (actual <= maximum) {
+      return 'Excellent work. You achieved today\'s goal.';
+    }
+    return 'Great effort. Be careful not to push too hard. Consistency is more important than intensity.';
+  }
+
+  function getCurrentDay(startDate) {
+    const start = new Date(startDate + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
+    return Math.max(1, Math.min(30, diff));
+  }
+
+  function generatePlan(answers) {
+    const { habit, time, consistency, obstacles, situation, goal } = answers;
+
+    if (!habit || !time) {
+      throw new Error('Assessment answers are incomplete.');
+    }
+
+    const baseTargetMap = {
+      'None': 10,
+      'Less than 15 minutes': 15,
+      '15\u201330 minutes': 25,
+      '30\u201360 minutes': 40,
+      'More than 60 minutes': 60,
+    };
+
+    let target = baseTargetMap[time] || 10;
+
+    if (consistency === 'Every day') target += 5;
+
+    if (situation === "I'm doing well but need more structure") target += 5;
+
+    if (Array.isArray(obstacles)) {
+      if (obstacles.includes('It feels overwhelming')) {
+        target = Math.min(target, 15);
+      }
+      if (obstacles.includes("I know what to do but can't start")) {
+        target = Math.min(target, 20);
+      }
+    }
+
+    target = Math.round(target / 5) * 5;
+    target = Math.max(5, Math.min(120, target));
+
+    const minimum = Math.max(3, Math.round(target * 0.5));
+    const maximum = Math.round(target * 1.5);
+
+    const explanation = buildExplanation(target, minimum, maximum, answers);
+
+    return {
+      habit,
+      goal: goal || `Build a consistent ${habit} habit`,
+      target,
+      minimum,
+      maximum,
+      explanation,
+      startDate: new Date().toISOString(),
+    };
+  }
+
+  function buildExplanation(target, minimum, maximum, answers) {
+    const { time, consistency, obstacles } = answers;
+    const parts = [];
+
+    if (time === 'None') {
+      parts.push('Your plan starts small and focuses on consistency.');
+    } else if (time === 'Less than 15 minutes' || time === '15\u201330 minutes') {
+      parts.push('Your plan builds on your current routine while keeping things manageable.');
+    } else {
+      parts.push('Your plan is designed to maintain your current momentum.');
+    }
+
+    if (consistency === 'Not at all' || consistency === 'A few times') {
+      parts.push('The goal is to show up consistently, even in small doses.');
+    }
+
+    if (Array.isArray(obstacles)) {
+      if (obstacles.includes('It feels overwhelming')) {
+        parts.push('We have set a gentle starting point so it does not feel overwhelming.');
+      }
+      if (obstacles.includes("I know what to do but can't start")) {
+        parts.push('Starting is the hardest part, so we keep the first step small.');
+      }
+    }
+
+    parts.push(`Your daily target is ${target} minute${target > 1 ? 's' : ''}.`);
+
+    if (minimum < target) {
+      parts.push(`On difficult days, aim for at least ${minimum} minute${minimum > 1 ? 's' : ''}.`);
+    }
+
+    if (maximum > target) {
+      parts.push(`When you feel motivated, ${maximum} minute${maximum > 1 ? 's' : ''} is a healthy upper limit.`);
+    }
+
+    if (consistency === 'Not at all' || consistency === 'A few times') {
+      parts.push('Remember: any amount counts toward building the habit.');
+    }
+
+    return parts.join(' ');
+  }
+
+  function renderPlan(plan) {
+    const app = document.getElementById('app');
+    if (!app) return;
+
+    const day = getCurrentDay(plan.startDate);
+
+    app.innerHTML = `
+      <div class="text-center mb-10">
+        <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20V10M18 20V4M6 20v-4"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl md:text-3xl font-semibold tracking-[-1.28px] text-ink mb-2">Your 30-Day Plan</h1>
+        <p class="text-sm text-body">A personalized plan designed for your situation.</p>
+      </div>
+
+      <div class="bg-canvas rounded-md p-6 md:p-8 space-y-5" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+        <div class="flex items-start gap-4 py-3 border-b border-hairline">
+          <span class="w-28 shrink-0 font-mono text-xs text-mute tracking-normal uppercase pt-0.5">Habit</span>
+          <span class="text-sm text-ink font-medium">${escapeHtml(plan.habit)}</span>
+        </div>
+
+        <div class="flex items-start gap-4 py-3 border-b border-hairline">
+          <span class="w-28 shrink-0 font-mono text-xs text-mute tracking-normal uppercase pt-0.5">30-Day Goal</span>
+          <span class="text-sm text-ink">${escapeHtml(plan.goal)}</span>
+        </div>
+
+        <div class="flex items-start gap-4 py-3 border-b border-hairline">
+          <span class="w-28 shrink-0 font-mono text-xs text-mute tracking-normal uppercase pt-0.5">Day</span>
+          <span class="text-sm text-ink font-medium">Day ${day} of 30</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 py-3 border-b border-hairline">
+          <div class="text-center">
+            <div class="text-2xl font-semibold tracking-[-0.96px] text-ink">${plan.target}</div>
+            <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Target</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-semibold tracking-[-0.96px] text-ink">${plan.minimum}</div>
+            <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Minimum</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-semibold tracking-[-0.96px] text-ink">${plan.maximum}</div>
+            <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Maximum</div>
+          </div>
+        </div>
+
+        <div class="py-2">
+          <p class="text-sm text-body leading-relaxed">${escapeHtml(plan.explanation)}</p>
+        </div>
+      </div>
+
+      <div id="action-tools" class="mt-8"></div>
+
+      <div id="checkin-section"></div>
+
+      <div class="flex items-center justify-center mt-8 gap-3">
+        <button id="btn-restart" class="inline-flex items-center h-10 px-4 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Retake Assessment</button>
+      </div>
+    `;
+
+    document.getElementById('btn-restart')?.addEventListener('click', () => {
+      try {
+        localStorage.removeItem(ASSESSMENT_KEY);
+        localStorage.removeItem(PLAN_KEY);
+      } catch {}
+      window.location.href = '/assessment';
+    });
+
+    renderCheckIn(plan);
+    renderActionTools(plan);
+  }
+
+  function renderError(message) {
+    const app = document.getElementById('app');
+    if (!app) return;
+
+    app.innerHTML = `
+      <div class="text-center mb-10">
+        <div class="w-12 h-12 bg-error-soft rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ee0000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl md:text-3xl font-semibold tracking-[-1.28px] text-ink mb-2">Something went wrong</h1>
+        <p class="text-sm text-body mb-6">${escapeHtml(message)}</p>
+        <a
+          href="/assessment"
+          class="inline-flex items-center h-12 px-6 bg-primary text-on-primary text-base font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90"
+        >Take the Assessment</a>
+      </div>
+    `;
+  }
+
+  function escapeHtml(str) {
+    if (typeof str !== 'string') return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  let currentTool = 'timer';
+  let timerSeconds = 300;
+  let timerInterval = null;
+  let timerStatus = 'idle';
+  let stopwatchSeconds = 0;
+  let stopwatchInterval = null;
+  let stopwatchStatus = 'idle';
+
+  function formatTimer(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  function formatStopwatch(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  function getTimerHistory() {
+    try { return JSON.parse(localStorage.getItem(TIMER_HISTORY_KEY)) || []; } catch { return []; }
+  }
+
+  function saveTimerToHistory() {
+    const history = getTimerHistory();
+    history.push({ date: getTodayString(), completed: true, timestamp: new Date().toISOString() });
+    localStorage.setItem(TIMER_HISTORY_KEY, JSON.stringify(history));
+  }
+
+  function getStopwatchSessions() {
+    try { return JSON.parse(localStorage.getItem(STOPWATCH_SESSIONS_KEY)) || []; } catch { return []; }
+  }
+
+  function saveStopwatchSession(plan, durationSeconds) {
+    const sessions = getStopwatchSessions();
+    sessions.push({ date: getTodayString(), durationSeconds: durationSeconds, timestamp: new Date().toISOString() });
+    localStorage.setItem(STOPWATCH_SESSIONS_KEY, JSON.stringify(sessions));
+
+    const checkIns = getSavedCheckIns();
+    const todayStr = getTodayString();
+    const todayEntry = checkIns[todayStr] || null;
+    const addMinutes = Math.round(durationSeconds / 60);
+    const existingMinutes = todayEntry ? todayEntry.actualMinutes : 0;
+    const newMinutes = existingMinutes + addMinutes;
+
+    const actual = newMinutes;
+    const feedback = getFeedback(actual, plan.target, plan.minimum, plan.maximum);
+    checkIns[todayStr] = {
+      date: todayStr,
+      actualMinutes: actual,
+      feedback: feedback,
+      target: plan.target,
+      minimum: plan.minimum,
+      maximum: plan.maximum,
+    };
+    saveCheckIns(checkIns);
+    renderCheckIn(plan);
+  }
+
+  function renderActionTools(plan) {
+    const section = document.getElementById('action-tools');
+    if (!section || !plan) return;
+
+    if (currentTool === 'timer-finished') {
+      renderTimerFinished(section, plan);
+    } else if (currentTool === 'stopwatch') {
+      renderStopwatchState(section, plan);
+    } else {
+      renderTimerState(section, plan);
+    }
+  }
+
+  function renderTimerState(section, plan) {
+    const isRunning = timerStatus === 'running';
+    const isPaused = timerStatus === 'paused';
+
+    section.innerHTML = `
+      <div class="bg-canvas rounded-md p-6 md:p-8" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+        <div class="flex items-center gap-2 mb-6">
+          <span class="font-mono text-xs text-mute tracking-normal uppercase">Resistance Timer</span>
+        </div>
+
+        <p class="text-sm text-body leading-relaxed mb-6">If you don't feel like doing your habit today, commit to only 5 minutes.</p>
+
+        <div class="text-center">
+          <div class="text-5xl font-semibold tracking-[-2.4px] text-ink tabular-nums mb-6">${formatTimer(timerSeconds)}</div>
+          <div class="flex items-center justify-center gap-3">
+            ${!isRunning && !isPaused ? `<button id="act-timer-start" class="inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Start 5-Minute Timer</button>` : ''}
+            ${isRunning ? `<button id="act-timer-pause" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Pause</button>` : ''}
+            ${isPaused ? `<button id="act-timer-resume" class="inline-flex items-center h-10 px-5 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Resume</button>` : ''}
+            ${isRunning || isPaused ? `<button id="act-timer-reset" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Reset</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('act-timer-start')?.addEventListener('click', function () { startTimer(section, plan); });
+    document.getElementById('act-timer-pause')?.addEventListener('click', function () { pauseTimer(section, plan); });
+    document.getElementById('act-timer-resume')?.addEventListener('click', function () { resumeTimer(section, plan); });
+    document.getElementById('act-timer-reset')?.addEventListener('click', function () { resetTimer(section, plan); });
+  }
+
+  function renderTimerFinished(section, plan) {
+    section.innerHTML = `
+      <div class="bg-canvas rounded-md p-6 md:p-8" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+        <div class="flex items-center gap-2 mb-6">
+          <span class="font-mono text-xs text-mute tracking-normal uppercase">Resistance Timer</span>
+        </div>
+
+        <div class="text-center">
+          <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <p class="text-lg font-semibold tracking-[-0.6px] text-ink mb-1">Great job. You started.</p>
+          <p class="text-sm text-body mb-6">You've already completed the hardest step.</p>
+          <button id="act-continue-stopwatch" class="inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Continue with Stopwatch</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('act-continue-stopwatch')?.addEventListener('click', function () {
+      currentTool = 'stopwatch';
+      stopwatchStatus = 'idle';
+      stopwatchSeconds = 0;
+      renderStopwatchState(section, plan);
+    });
+  }
+
+  function renderStopwatchState(section, plan) {
+    const isRunning = stopwatchStatus === 'running';
+    const isPaused = stopwatchStatus === 'paused';
+    const isStopped = stopwatchStatus === 'stopped';
+
+    section.innerHTML = `
+      <div class="bg-canvas rounded-md p-6 md:p-8" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+        <div class="flex items-center gap-2 mb-6">
+          <span class="font-mono text-xs text-mute tracking-normal uppercase">Stopwatch</span>
+        </div>
+
+        <div class="text-center">
+          <div class="text-5xl font-semibold tracking-[-2.4px] text-ink tabular-nums mb-6">${formatStopwatch(stopwatchSeconds)}</div>
+          <div class="flex items-center justify-center gap-3 flex-wrap">
+            ${!isRunning && !isPaused && !isStopped ? `<button id="act-sw-start" class="inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Start Stopwatch</button>` : ''}
+            ${isRunning ? `<button id="act-sw-pause" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Pause</button>` : ''}
+            ${isPaused ? `<button id="act-sw-resume" class="inline-flex items-center h-10 px-5 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Resume</button>` : ''}
+            ${isRunning ? `<button id="act-sw-stop" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Stop</button>` : ''}
+            ${isStopped ? `<button id="act-sw-save" class="inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Save Session</button>` : ''}
+            ${isStopped ? `<button id="act-sw-reset" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Reset</button>` : ''}
+            ${isPaused ? `<button id="act-sw-reset" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Reset</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('act-sw-start')?.addEventListener('click', function () { startStopwatch(section, plan); });
+    document.getElementById('act-sw-pause')?.addEventListener('click', function () { pauseStopwatch(section, plan); });
+    document.getElementById('act-sw-resume')?.addEventListener('click', function () { resumeStopwatch(section, plan); });
+    document.getElementById('act-sw-stop')?.addEventListener('click', function () { stopStopwatch(section, plan); });
+    document.getElementById('act-sw-save')?.addEventListener('click', function () { saveStopwatchSession(plan, stopwatchSeconds); resetStopwatch(section, plan); });
+    document.getElementById('act-sw-reset')?.addEventListener('click', function () { resetStopwatch(section, plan); });
+  }
+
+  function startTimer(section, plan) {
+    if (timerInterval) return;
+    timerStatus = 'running';
+    timerInterval = setInterval(function () {
+      timerSeconds--;
+      if (timerSeconds <= 0) {
+        timerSeconds = 0;
+        clearInterval(timerInterval);
+        timerInterval = null;
+        timerStatus = 'finished';
+        currentTool = 'timer-finished';
+        saveTimerToHistory();
+        renderTimerFinished(section, plan);
+      } else {
+        renderTimerState(section, plan);
+      }
+    }, 1000);
+    renderTimerState(section, plan);
+  }
+
+  function pauseTimer(section, plan) {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    timerStatus = 'paused';
+    renderTimerState(section, plan);
+  }
+
+  function resumeTimer(section, plan) {
+    if (timerInterval) return;
+    timerStatus = 'running';
+    timerInterval = setInterval(function () {
+      timerSeconds--;
+      if (timerSeconds <= 0) {
+        timerSeconds = 0;
+        clearInterval(timerInterval);
+        timerInterval = null;
+        timerStatus = 'finished';
+        currentTool = 'timer-finished';
+        saveTimerToHistory();
+        renderTimerFinished(section, plan);
+      } else {
+        renderTimerState(section, plan);
+      }
+    }, 1000);
+    renderTimerState(section, plan);
+  }
+
+  function resetTimer(section, plan) {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    timerSeconds = 300;
+    timerStatus = 'idle';
+    currentTool = 'timer';
+    renderTimerState(section, plan);
+  }
+
+  function startStopwatch(section, plan) {
+    if (stopwatchInterval) return;
+    stopwatchStatus = 'running';
+    stopwatchInterval = setInterval(function () {
+      stopwatchSeconds++;
+      renderStopwatchState(section, plan);
+    }, 1000);
+    renderStopwatchState(section, plan);
+  }
+
+  function pauseStopwatch(section, plan) {
+    if (stopwatchInterval) {
+      clearInterval(stopwatchInterval);
+      stopwatchInterval = null;
+    }
+    stopwatchStatus = 'paused';
+    renderStopwatchState(section, plan);
+  }
+
+  function resumeStopwatch(section, plan) {
+    if (stopwatchInterval) return;
+    stopwatchStatus = 'running';
+    stopwatchInterval = setInterval(function () {
+      stopwatchSeconds++;
+      renderStopwatchState(section, plan);
+    }, 1000);
+    renderStopwatchState(section, plan);
+  }
+
+  function stopStopwatch(section, plan) {
+    if (stopwatchInterval) {
+      clearInterval(stopwatchInterval);
+      stopwatchInterval = null;
+    }
+    stopwatchStatus = 'stopped';
+    renderStopwatchState(section, plan);
+  }
+
+  function resetStopwatch(section, plan) {
+    if (stopwatchInterval) {
+      clearInterval(stopwatchInterval);
+      stopwatchInterval = null;
+    }
+    stopwatchSeconds = 0;
+    stopwatchStatus = 'idle';
+    timerSeconds = 300;
+    timerStatus = 'idle';
+    currentTool = 'timer';
+    renderActionTools(plan);
+  }
+
+  function renderCheckIn(plan) {
+    const section = document.getElementById('checkin-section');
+    if (!section || !plan) return;
+
+    const checkIns = getSavedCheckIns();
+    const todayStr = getTodayString();
+    const todayEntry = checkIns[todayStr];
+    const startDateObj = new Date(plan.startDate + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysSinceStart = Math.floor((today - startDateObj) / (1000 * 60 * 60 * 24));
+    const yesterday = new Date(today.getTime() - 86400000);
+    const yesterdayStr = getDateString(yesterday);
+    const yesterdayMissed = daysSinceStart >= 1 && !checkIns[yesterdayStr] && !todayEntry;
+
+    let html = '<div class="mt-8 space-y-6">';
+
+    if (yesterdayMissed) {
+      html += `
+        <div class="rounded-md p-4 text-center" style="background-color:#ffefcf;box-shadow:0 0 0 1px rgba(0,0,0,0.06) inset;">
+          <p class="text-sm font-medium" style="color:#ab570a;">You can restart today. One missed day does not erase your progress.</p>
+        </div>
+      `;
+    }
+
+    html += `
+      <div class="bg-canvas rounded-md p-6 md:p-8 space-y-5" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+        <h2 class="text-lg font-semibold tracking-[-0.6px] text-ink">Daily Check-In</h2>
+
+        <div class="flex items-center justify-between py-3 border-b border-hairline">
+          <span class="text-sm text-body">Today's Target</span>
+          <span class="text-sm text-ink font-medium">${plan.target} min</span>
+        </div>
+    `;
+
+    if (todayEntry) {
+      html += `
+        <div class="flex items-center justify-between py-3 border-b border-hairline">
+          <span class="text-sm text-body">Today's Progress</span>
+          <span class="text-sm text-ink font-medium">${todayEntry.actualMinutes} min</span>
+        </div>
+        <div class="flex items-center justify-between py-3">
+          <span class="text-sm text-body">Status</span>
+          <span class="text-sm font-medium ${todayEntry.actualMinutes >= plan.target ? 'text-success' : 'text-body'}">${todayEntry.actualMinutes >= plan.target ? 'Target Achieved' : 'In Progress'}</span>
+        </div>
+        <div class="bg-canvas-soft rounded-md p-4 text-center">
+          <p class="text-sm text-body leading-relaxed">${escapeHtml(todayEntry.feedback)}</p>
+        </div>
+      `;
+    } else {
+      html += `
+        <div class="py-3">
+          <label for="checkin-minutes" class="block text-sm text-body mb-3">How many minutes did you spend today?</label>
+          <div class="flex items-center gap-3">
+            <input
+              type="number"
+              id="checkin-minutes"
+              min="0"
+              max="999"
+              placeholder="Minutes"
+              class="flex-1 h-10 px-3 bg-canvas text-ink text-sm rounded-sm border border-hairline outline-none focus:border-hairline-strong transition-colors"
+            />
+            <span class="text-sm text-body">min</span>
+          </div>
+          <button id="btn-save-checkin" class="mt-4 inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">
+            Save Progress
+          </button>
+        </div>
+      `;
+    }
+
+    html += '</div>';
+    html += renderHistory(checkIns, todayStr);
+    html += '</div>';
+
+    section.innerHTML = html;
+
+    const btnSave = document.getElementById('btn-save-checkin');
+    const input = document.getElementById('checkin-minutes');
+    if (btnSave && input) {
+      btnSave.addEventListener('click', function () { handleCheckInSubmit(plan, input); });
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') handleCheckInSubmit(plan, input);
+      });
+    }
+  }
+
+  function renderHistory(checkIns, todayStr) {
+    const entries = Object.entries(checkIns)
+      .filter(function (_ref) {
+        var date = _ref[0];
+        return date !== todayStr;
+      })
+      .sort(function (_ref2, _ref3) {
+        var a = _ref2[0];
+        var b = _ref3[0];
+        return b.localeCompare(a);
+      })
+      .slice(0, 7);
+
+    if (entries.length === 0) return '';
+
+    var rows = '';
+    for (var i = 0; i < entries.length; i++) {
+      var _entries$i = entries[i];
+      var date = _entries$i[0];
+      var entry = _entries$i[1];
+      var d = new Date(date + 'T00:00:00');
+      var month = d.toLocaleString('en-US', { month: 'short' });
+      var dayNum = d.getDate();
+      rows += `
+        <div class="flex items-center justify-between py-2 border-b border-hairline last:border-b-0">
+          <span class="text-sm text-body">${month} ${dayNum}</span>
+          <span class="text-sm text-ink font-medium">${entry.actualMinutes} min</span>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="bg-canvas rounded-md p-6 md:p-8 space-y-4" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+        <h2 class="text-lg font-semibold tracking-[-0.6px] text-ink">Recent Activity</h2>
+        ${rows}
+      </div>
+    `;
+  }
+
+  function handleCheckInSubmit(plan, input) {
+    var value = parseInt(input.value, 10);
+    if (isNaN(value) || value < 0) {
+      input.value = '';
+      input.focus();
+      return;
+    }
+
+    var actual = value;
+    var todayStr = getTodayString();
+    var checkIns = getSavedCheckIns();
+    var feedback = getFeedback(actual, plan.target, plan.minimum, plan.maximum);
+
+    checkIns[todayStr] = {
+      date: todayStr,
+      actualMinutes: actual,
+      feedback: feedback,
+      target: plan.target,
+      minimum: plan.minimum,
+      maximum: plan.maximum,
+    };
+
+    saveCheckIns(checkIns);
+    renderCheckIn(plan);
+  }
+
+  function init() {
+    try {
+      const savedPlan = getSavedPlan();
+
+      if (savedPlan && savedPlan.habit) {
+        renderPlan(savedPlan);
+        return;
+      }
+
+      const answers = getAssessmentAnswers();
+
+      if (!answers || !answers.habit) {
+        renderError('Please complete the assessment first to generate your personalized plan.');
+        return;
+      }
+
+      const plan = generatePlan(answers);
+      savePlan(plan);
+      renderPlan(plan);
+    } catch (e) {
+      renderError(e.message || 'Could not generate your plan. Please try the assessment again.');
+    }
+  }
+
+  init();
+</script>

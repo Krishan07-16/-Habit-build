@@ -1,11 +1,110 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
 ---
 
 <Layout>
-	<Welcome />
+  <Nav currentPage="home" />
+
+  <main>
+    <!-- Hero -->
+    <section class="relative bg-canvas overflow-hidden">
+      <div class="absolute inset-0 opacity-40" aria-hidden="true">
+        <div class="absolute inset-0" style="
+          background:
+            radial-gradient(ellipse 80% 60% at 50% -20%, rgba(0,124,240,0.3) 0%, transparent 60%),
+            radial-gradient(ellipse 60% 50% at 80% 40%, rgba(121,40,202,0.2) 0%, transparent 50%),
+            radial-gradient(ellipse 60% 50% at 20% 60%, rgba(0,223,216,0.15) 0%, transparent 50%);
+        "></div>
+      </div>
+
+      <div class="relative max-w-[1400px] mx-auto px-4 md:px-6 pt-24 pb-32 md:pt-32 md:pb-48">
+        <div class="max-w-2xl mx-auto text-center">
+          <span class="inline-flex items-center h-5 px-2 bg-canvas-soft text-body text-xs rounded-full font-mono tracking-normal mb-6">Beta</span>
+          <h1 class="text-4xl md:text-5xl font-semibold leading-tight tracking-[-2.4px] text-ink mb-4">
+            Build habits that stick.
+          </h1>
+          <p class="text-lg md:text-xl text-body leading-relaxed mb-10 max-w-lg mx-auto">
+            A gentle, sustainable approach to building habits. No streaks, no shame. Just consistency.
+          </p>
+          <div class="flex items-center justify-center gap-3">
+            <a
+              href="/assessment"
+              class="inline-flex items-center h-12 px-6 bg-primary text-on-primary text-base font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90"
+            >Start Assessment</a>
+            <a
+              href="#how-it-works"
+              class="inline-flex items-center h-12 px-6 bg-canvas text-ink text-base font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft"
+            >How It Works</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section id="how-it-works" class="bg-canvas-soft py-24 md:py-32">
+      <div class="max-w-[1400px] mx-auto px-4 md:px-6">
+        <div class="text-center mb-16">
+          <span class="font-mono text-xs text-mute tracking-normal uppercase">Philosophy</span>
+          <h2 class="text-3xl md:text-4xl font-semibold leading-tight tracking-[-1.28px] text-ink mt-3 mb-4">
+            Consistency over intensity.
+          </h2>
+          <p class="text-body text-base md:text-lg max-w-lg mx-auto">
+            The goal is not to maximize productivity. The goal is to help you maintain habits over long periods.
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-4">
+          <article class="bg-canvas rounded-md p-6" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+            <div class="w-10 h-10 rounded-full bg-canvas-soft-2 flex items-center justify-center mb-4">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="10" cy="10" r="8"/><path d="M10 6v4l3 3"/>
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold tracking-[-0.6px] text-ink mb-2">Time Invested</h3>
+            <p class="text-sm text-body leading-relaxed">We track time spent on your habit, not tasks completed. Progress is measured in minutes, not checkboxes.</p>
+          </article>
+
+          <article class="bg-canvas rounded-md p-6" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+            <div class="w-10 h-10 rounded-full bg-canvas-soft-2 flex items-center justify-center mb-4">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 18L10 2l8 16H2z"/>
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold tracking-[-0.6px] text-ink mb-2">Consistency, Not Intensity</h3>
+            <p class="text-sm text-body leading-relaxed">Small steps done daily beat huge efforts done once. We help you show up, even when it is hard.</p>
+          </article>
+
+          <article class="bg-canvas rounded-md p-6" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+            <div class="w-10 h-10 rounded-full bg-canvas-soft-2 flex items-center justify-center mb-4">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="4 14 8 10 12 14 16 6"/>
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold tracking-[-0.6px] text-ink mb-2">Sustainable Growth</h3>
+            <p class="text-sm text-body leading-relaxed">Your plan adapts to your life. Consistent success means gradual increases. Setbacks are met with support, not punishment.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="bg-primary py-24 md:py-32">
+      <div class="max-w-[1400px] mx-auto px-4 md:px-6 text-center">
+        <h2 class="text-3xl md:text-4xl font-semibold leading-tight tracking-[-1.28px] text-on-primary mb-4">
+          Ready to build your habit?
+        </h2>
+        <p class="text-base md:text-lg text-white/70 max-w-md mx-auto mb-10">
+          Answer a few questions and get a personalized 30-day plan designed around your life.
+        </p>
+        <a
+          href="/assessment"
+          class="inline-flex items-center h-12 px-8 bg-on-primary text-primary text-base font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90"
+        >Take the Assessment</a>
+      </div>
+    </section>
+  </main>
+
+  <Footer />
 </Layout>

@@ -1,0 +1,35 @@
+---
+const { currentPage = 'home' } = Astro.props;
+---
+
+<nav class="sticky top-0 z-50 h-16 bg-canvas border-b border-hairline">
+  <div class="max-w-[1400px] mx-auto px-4 md:px-6 h-full flex items-center justify-between">
+    <a href="/" class="flex items-center gap-2 no-underline">
+      <span class="w-2 h-2 rounded-full bg-ink"></span>
+      <span class="text-sm font-medium tracking-[-0.28px] text-ink">Habit Build</span>
+    </a>
+
+    <div class="flex items-center gap-4">
+      <a
+        href="/assessment"
+        class="text-sm text-body no-underline px-2 py-1 rounded-full hover:text-ink transition-colors"
+        >Assessment</a
+      >
+      <a
+        href="/plan"
+        class="text-sm text-body no-underline px-2 py-1 rounded-full hover:text-ink transition-colors"
+        >Plan</a
+      >
+      <a
+        href="/progress"
+        class="text-sm text-body no-underline px-2 py-1 rounded-full hover:text-ink transition-colors"
+        >Progress</a
+      >
+      <a
+        href="/assessment"
+        class="inline-flex items-center h-7 px-2 bg-primary text-on-primary text-sm font-medium rounded-sm no-underline transition-opacity hover:opacity-90"
+        >Start</a
+      >
+    </div>
+  </div>
+</nav>
