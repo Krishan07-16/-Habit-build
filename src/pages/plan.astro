@@ -51,6 +51,7 @@ import Footer from '../components/Footer.astro';
   }
 
   const CHECKINS_KEY = 'habit-build-checkins';
+  const ADJUSTMENTS_KEY = 'habit-build-adjustments';
 
   function getDateString(date) {
     const year = date.getFullYear();
@@ -76,8 +77,22 @@ import Footer from '../components/Footer.astro';
     localStorage.setItem(CHECKINS_KEY, JSON.stringify(checkIns));
   }
 
+  function getAdjustments() {
+    try {
+      const raw = localStorage.getItem(ADJUSTMENTS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveAdjustments(adjustments) {
+    localStorage.setItem(ADJUSTMENTS_KEY, JSON.stringify(adjustments));
+  }
+
   const TIMER_HISTORY_KEY = 'habit-build-timer-history';
   const STOPWATCH_SESSIONS_KEY = 'habit-build-stopwatch-sessions';
+  const STOPWATCH_STATE_KEY = 'habit-build-stopwatch-state';
 
   function getFeedback(actual, target, minimum, maximum) {
     if (actual < minimum) {
@@ -92,12 +107,137 @@ import Footer from '../components/Footer.astro';
     return 'Great effort. Be careful not to push too hard. Consistency is more important than intensity.';
   }
 
+  function evaluateAdjustment(plan) {
+    const checkIns = getSavedCheckIns();
+    const adjustments = getAdjustments();
+
+    const entries = Object.entries(checkIns)
+      .filter(function (_ref) { return _ref[1].actualMinutes >= 0; })
+      .sort(function (_ref2, _ref3) { return _ref2[0].localeCompare(_ref3[0]); });
+
+    if (entries.length < 5) return false;
+
+    var window$ = entries.slice(-7);
+    var hitCount = 0;
+    for (var i = 0; i < window$.length; i++) {
+      if (window$[i][1].actualMinutes >= window$[i][1].target) {
+        hitCount++;
+      }
+    }
+
+    var hitRate = hitCount / window$.length;
+    var adjustment = 0;
+
+    if (hitRate > 0.8) {
+      adjustment = Math.floor(Math.random() * 4) + 2;
+    } else if (hitRate < 0.4) {
+      adjustment = -(Math.floor(Math.random() * 4) + 2);
+    }
+
+    if (adjustment === 0) return false;
+
+    var lastAdj = adjustments.length > 0 ? adjustments[adjustments.length - 1] : null;
+    if (lastAdj) {
+      var lastDate = new Date(lastAdj.date + 'T00:00:00');
+      var today = new Date();
+      today.setHours(0, 0, 0, 0);
+      var daysSince = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+      if (daysSince < 5) return false;
+    }
+
+    var prevTarget = plan.target;
+    var prevMin = plan.minimum;
+    var prevMax = plan.maximum;
+
+    var newTarget = prevTarget + adjustment;
+    newTarget = Math.round(newTarget / 5) * 5;
+    newTarget = Math.max(5, Math.min(120, newTarget));
+
+    if (newTarget === prevTarget) return false;
+
+    plan.target = newTarget;
+    plan.minimum = Math.max(3, Math.round(newTarget * 0.5));
+    plan.maximum = Math.round(newTarget * 1.5);
+
+    var answers = getAssessmentAnswers();
+    plan.explanation = buildExplanation(newTarget, plan.minimum, plan.maximum, answers || {});
+
+    savePlan(plan);
+
+    adjustments.push({
+      date: getTodayString(),
+      previousTarget: prevTarget,
+      newTarget: newTarget,
+      previousMinimum: prevMin,
+      newMinimum: plan.minimum,
+      previousMaximum: prevMax,
+      newMaximum: plan.maximum,
+      hitRate: Math.round(hitRate * 100),
+      direction: adjustment > 0 ? 'increased' : 'decreased',
+      amount: Math.abs(adjustment),
+    });
+    saveAdjustments(adjustments);
+
+    return true;
+  }
+
   function getCurrentDay(startDate) {
     const start = new Date(startDate + 'T00:00:00');
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
     return Math.max(1, Math.min(30, diff));
+  }
+
+  function getPlanElapsedDays(startDate) {
+    const start = new Date(startDate + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
+  }
+
+  function isPlanComplete(plan) {
+    if (plan.status === 'continuing') return false;
+    return getPlanElapsedDays(plan.startDate) >= 30;
+  }
+
+  function getPlanStats() {
+    const checkIns = getSavedCheckIns();
+    const entries = Object.entries(checkIns)
+      .filter(function (_ref) { return _ref[1].actualMinutes >= 0; })
+      .sort(function (_ref2, _ref3) { return _ref2[0].localeCompare(_ref3[0]); });
+
+    var totalMinutes = 0;
+    var activeDays = 0;
+    for (var i = 0; i < entries.length; i++) {
+      totalMinutes += entries[i][1].actualMinutes;
+      activeDays++;
+    }
+
+    var first7 = entries.slice(0, 7).filter(function (e) { return e; });
+    var last7 = entries.slice(-7).filter(function (e) { return e; });
+
+    function avg(arr) {
+      if (arr.length === 0) return 0;
+      var sum = 0;
+      for (var j = 0; j < arr.length; j++) sum += arr[j][1].actualMinutes;
+      return sum / arr.length;
+    }
+
+    var firstAvg = avg(first7);
+    var lastAvg = avg(last7);
+    var trendPct = firstAvg > 0 ? Math.round(((lastAvg - firstAvg) / firstAvg) * 100) : 0;
+
+    var consistencyPct = Math.min(100, Math.round((activeDays / 30) * 100));
+
+    return {
+      totalMinutes: totalMinutes,
+      activeDays: activeDays,
+      consistencyPct: consistencyPct,
+      avgMinutes: activeDays > 0 ? Math.round(totalMinutes / activeDays) : 0,
+      trendPct: trendPct,
+      trendLabel: trendPct > 5 ? 'increased' : trendPct < -5 ? 'decreased' : 'stable',
+    };
   }
 
   function generatePlan(answers) {
@@ -195,7 +335,13 @@ import Footer from '../components/Footer.astro';
     const app = document.getElementById('app');
     if (!app) return;
 
-    const day = getCurrentDay(plan.startDate);
+    if (isPlanComplete(plan)) {
+      renderCompletionSummary(plan);
+      return;
+    }
+
+    var continuing = plan.status === 'continuing';
+    var day = continuing ? null : getCurrentDay(plan.startDate);
 
     app.innerHTML = `
       <div class="text-center mb-10">
@@ -204,8 +350,8 @@ import Footer from '../components/Footer.astro';
             <path d="M12 20V10M18 20V4M6 20v-4"/>
           </svg>
         </div>
-        <h1 class="text-2xl md:text-3xl font-semibold tracking-[-1.28px] text-ink mb-2">Your 30-Day Plan</h1>
-        <p class="text-sm text-body">A personalized plan designed for your situation.</p>
+        <h1 class="text-2xl md:text-3xl font-semibold tracking-[-1.28px] text-ink mb-2">${continuing ? 'Your Plan' : 'Your 30-Day Plan'}</h1>
+        <p class="text-sm text-body">${continuing ? 'Continue building your habit at your own pace.' : 'A personalized plan designed for your situation.'}</p>
       </div>
 
       <div class="bg-canvas rounded-md p-6 md:p-8 space-y-5" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
@@ -215,38 +361,42 @@ import Footer from '../components/Footer.astro';
         </div>
 
         <div class="flex items-start gap-4 py-3 border-b border-hairline">
-          <span class="w-28 shrink-0 font-mono text-xs text-mute tracking-normal uppercase pt-0.5">30-Day Goal</span>
+          <span class="w-28 shrink-0 font-mono text-xs text-mute tracking-normal uppercase pt-0.5">Goal</span>
           <span class="text-sm text-ink">${escapeHtml(plan.goal)}</span>
         </div>
 
+        ${continuing ? '' : `
         <div class="flex items-start gap-4 py-3 border-b border-hairline">
           <span class="w-28 shrink-0 font-mono text-xs text-mute tracking-normal uppercase pt-0.5">Day</span>
           <span class="text-sm text-ink font-medium">Day ${day} of 30</span>
         </div>
+        `}
 
         <div class="grid grid-cols-3 gap-3 py-3 border-b border-hairline">
           <div class="text-center">
-            <div class="text-2xl font-semibold tracking-[-0.96px] text-ink">${plan.target}</div>
+            <div id="plan-target-value" class="text-2xl font-semibold tracking-[-0.96px] text-ink">${plan.target}</div>
             <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Target</div>
           </div>
           <div class="text-center">
-            <div class="text-2xl font-semibold tracking-[-0.96px] text-ink">${plan.minimum}</div>
+            <div id="plan-minimum-value" class="text-2xl font-semibold tracking-[-0.96px] text-ink">${plan.minimum}</div>
             <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Minimum</div>
           </div>
           <div class="text-center">
-            <div class="text-2xl font-semibold tracking-[-0.96px] text-ink">${plan.maximum}</div>
+            <div id="plan-maximum-value" class="text-2xl font-semibold tracking-[-0.96px] text-ink">${plan.maximum}</div>
             <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Maximum</div>
           </div>
         </div>
 
         <div class="py-2">
-          <p class="text-sm text-body leading-relaxed">${escapeHtml(plan.explanation)}</p>
+          <p id="plan-explanation" class="text-sm text-body leading-relaxed">${escapeHtml(plan.explanation)}</p>
         </div>
       </div>
 
       <div id="action-tools" class="mt-8"></div>
 
       <div id="checkin-section"></div>
+
+      <div id="adjustment-history"></div>
 
       <div class="flex items-center justify-center mt-8 gap-3">
         <button id="btn-restart" class="inline-flex items-center h-10 px-4 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Retake Assessment</button>
@@ -263,6 +413,7 @@ import Footer from '../components/Footer.astro';
 
     renderCheckIn(plan);
     renderActionTools(plan);
+    renderAdjustmentHistory();
   }
 
   function renderError(message) {
@@ -286,6 +437,165 @@ import Footer from '../components/Footer.astro';
         >Take the Assessment</a>
       </div>
     `;
+  }
+
+  function updatePlanDisplay(plan) {
+    var targetEl = document.getElementById('plan-target-value');
+    var minEl = document.getElementById('plan-minimum-value');
+    var maxEl = document.getElementById('plan-maximum-value');
+    var explEl = document.getElementById('plan-explanation');
+    if (targetEl) targetEl.textContent = plan.target;
+    if (minEl) minEl.textContent = plan.minimum;
+    if (maxEl) maxEl.textContent = plan.maximum;
+    if (explEl) explEl.innerHTML = escapeHtml(plan.explanation);
+  }
+
+  function renderAdjustmentHistory() {
+    var section = document.getElementById('adjustment-history');
+    if (!section) return;
+
+    var adjustments = getAdjustments();
+    if (adjustments.length === 0) return;
+
+    var rows = '';
+    for (var i = adjustments.length - 1; i >= 0; i--) {
+      var adj = adjustments[i];
+      var d = new Date(adj.date + 'T00:00:00');
+      var month = d.toLocaleString('en-US', { month: 'short' });
+      var dayNum = d.getDate();
+      var arrow = adj.direction === 'increased' ? '\u2191' : '\u2193';
+      var color = adj.direction === 'increased' ? 'text-success' : 'text-mute';
+      rows += `
+        <div class="flex items-center justify-between py-2 border-b border-hairline last:border-b-0">
+          <span class="text-sm text-body">${month} ${dayNum}</span>
+          <span class="text-sm text-ink font-medium ${color}">${adj.previousTarget} ${arrow} ${adj.newTarget} min</span>
+        </div>
+      `;
+    }
+
+    section.innerHTML = `
+      <div class="bg-canvas rounded-md p-6 md:p-8 space-y-4 mt-6" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+        <h2 class="text-lg font-semibold tracking-[-0.6px] text-ink">Plan Adjustments</h2>
+        <p class="text-sm text-body">Your targets are adjusted based on your performance. Showing the ${adjustments.length} most recent adjustment${adjustments.length > 1 ? 's' : ''}.</p>
+        ${rows}
+      </div>
+    `;
+  }
+
+  function calculateAdaptedTarget() {
+    const checkIns = getSavedCheckIns();
+    const entries = Object.entries(checkIns)
+      .filter(function (_ref) { return _ref[1].actualMinutes >= 0; })
+      .sort(function (_ref2, _ref3) { return _ref2[0].localeCompare(_ref3[0]); });
+
+    var last7 = entries.slice(-7);
+    if (last7.length === 0) return null;
+
+    var total = 0;
+    for (var i = 0; i < last7.length; i++) {
+      total += last7[i][1].actualMinutes;
+    }
+    var avg = total / last7.length;
+    var target = Math.round(avg / 5) * 5;
+    return Math.max(5, Math.min(120, target));
+  }
+
+  function handleStartNewPlan(plan) {
+    var adaptedTarget = calculateAdaptedTarget();
+    var newTarget = adaptedTarget || plan.target;
+
+    var newPlan = {
+      habit: plan.habit,
+      goal: plan.goal,
+      target: newTarget,
+      minimum: Math.max(3, Math.round(newTarget * 0.5)),
+      maximum: Math.round(newTarget * 1.5),
+      explanation: 'Your new plan builds on your progress. Your daily target is ' + newTarget + ' minute' + (newTarget > 1 ? 's' : '') + ' based on your recent performance.',
+      startDate: new Date().toISOString(),
+    };
+
+    savePlan(newPlan);
+    renderPlan(newPlan);
+  }
+
+  function handleContinueFreely(plan) {
+    plan.status = 'continuing';
+    savePlan(plan);
+    renderPlan(plan);
+  }
+
+  function renderCompletionSummary(plan) {
+    const app = document.getElementById('app');
+    if (!app) return;
+
+    var stats = getPlanStats();
+    var trendSymbol = stats.trendPct > 0 ? '+' : '';
+    var trendColor = stats.trendPct > 5 ? 'text-success' : stats.trendPct < -5 ? 'text-mute' : 'text-ink';
+
+    app.innerHTML = `
+      <div class="text-center mb-10">
+        <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 ring-glow">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0070f3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl md:text-3xl font-semibold tracking-[-1.28px] text-ink mb-2">Congratulations!</h1>
+        <p class="text-sm text-body">You've completed your 30-day plan.</p>
+      </div>
+
+      <div class="bg-canvas rounded-md p-6 md:p-8 space-y-5" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+        <h2 class="text-lg font-semibold tracking-[-0.6px] text-ink">Your 30-Day Summary</h2>
+
+        <div class="grid grid-cols-2 gap-4 py-4 border-b border-hairline">
+          <div class="text-center">
+            <div class="text-2xl font-semibold tracking-[-0.96px] text-ink">${stats.totalMinutes}</div>
+            <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Total Minutes</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-semibold tracking-[-0.96px] text-ink">${stats.consistencyPct}%</div>
+            <div class="font-mono text-xs text-mute tracking-normal uppercase mt-1">Consistency</div>
+          </div>
+        </div>
+
+        <div class="py-2 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-body">Active Days</span>
+            <span class="text-sm text-ink font-medium">${stats.activeDays}/30</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-body">Daily Average</span>
+            <span class="text-sm text-ink font-medium">${stats.avgMinutes} min</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-body">Trend</span>
+            <span class="text-sm text-ink font-medium ${trendColor}">${trendSymbol}${stats.trendPct}% (${stats.trendLabel})</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3 mt-8">
+        <button id="btn-new-plan" class="inline-flex items-center justify-center h-12 px-6 bg-primary text-on-primary text-base font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">
+          Start a New 30-Day Plan
+        </button>
+        <button id="btn-continue" class="inline-flex items-center justify-center h-12 px-6 bg-canvas text-ink text-base font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">
+          Continue Freely
+        </button>
+      </div>
+
+      <div class="flex items-center justify-center mt-6 gap-3">
+        <button id="btn-restart-complete" class="inline-flex items-center h-10 px-4 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Retake Assessment</button>
+      </div>
+    `;
+
+    document.getElementById('btn-new-plan')?.addEventListener('click', function () { handleStartNewPlan(plan); });
+    document.getElementById('btn-continue')?.addEventListener('click', function () { handleContinueFreely(plan); });
+    document.getElementById('btn-restart-complete')?.addEventListener('click', function () {
+      try {
+        localStorage.removeItem(ASSESSMENT_KEY);
+        localStorage.removeItem(PLAN_KEY);
+      } catch {}
+      window.location.href = '/assessment';
+    });
   }
 
   function escapeHtml(str) {
@@ -352,6 +662,71 @@ import Footer from '../components/Footer.astro';
     };
     saveCheckIns(checkIns);
     renderCheckIn(plan);
+  }
+
+  function saveStopwatchState(status) {
+    var state = {
+      seconds: stopwatchSeconds,
+      status: status,
+      timestamp: new Date().toISOString(),
+    };
+    try { localStorage.setItem(STOPWATCH_STATE_KEY, JSON.stringify(state)); } catch {}
+  }
+
+  function clearStopwatchState() {
+    try { localStorage.removeItem(STOPWATCH_STATE_KEY); } catch {}
+  }
+
+  function restoreStopwatchState() {
+    try {
+      var raw = localStorage.getItem(STOPWATCH_STATE_KEY);
+      if (!raw) return false;
+      var saved = JSON.parse(raw);
+      if (!saved || !saved.status) {
+        clearStopwatchState();
+        return false;
+      }
+
+      stopwatchSeconds = saved.seconds;
+
+      if (saved.status === 'running') {
+        var elapsed = (Date.now() - new Date(saved.timestamp).getTime()) / 1000;
+        if (elapsed > 0) {
+          stopwatchSeconds += Math.floor(elapsed);
+        }
+        stopwatchStatus = 'running';
+        currentTool = 'stopwatch';
+        return true;
+      }
+
+      if (saved.status === 'paused') {
+        stopwatchStatus = 'paused';
+        currentTool = 'stopwatch';
+        return true;
+      }
+
+      return false;
+    } catch {
+      clearStopwatchState();
+      return false;
+    }
+  }
+
+  function renderSessionIndicator() {
+    var el = document.getElementById('session-indicator');
+    if (!el) return;
+
+    if (stopwatchStatus === 'running' || stopwatchStatus === 'paused') {
+      el.innerHTML = `
+        <div class="flex items-center gap-2 px-4 py-2 mb-4 rounded-md bg-primary/5" style="box-shadow:0 0 0 1px rgba(0,112,243,0.15) inset;">
+          <span class="w-2 h-2 rounded-full ${stopwatchStatus === 'running' ? 'bg-success' : 'bg-mute'}" style="${stopwatchStatus === 'running' ? 'animation:pulse 1.5s ease-in-out infinite' : ''}"></span>
+          <span class="text-xs font-medium text-primary">Session ${stopwatchStatus === 'running' ? 'In Progress' : 'Paused'}</span>
+          <span class="text-xs text-mute tabular-nums ml-auto">${formatStopwatch(stopwatchSeconds)}</span>
+        </div>
+      `;
+    } else {
+      el.innerHTML = '';
+    }
   }
 
   function renderActionTools(plan) {
@@ -553,11 +928,16 @@ import Footer from '../components/Footer.astro';
   function startStopwatch(section, plan) {
     if (stopwatchInterval) return;
     stopwatchStatus = 'running';
+    saveStopwatchState('running');
     stopwatchInterval = setInterval(function () {
       stopwatchSeconds++;
+      if (stopwatchSeconds % 5 === 0) {
+        saveStopwatchState('running');
+      }
       renderStopwatchState(section, plan);
     }, 1000);
     renderStopwatchState(section, plan);
+    renderSessionIndicator();
   }
 
   function pauseStopwatch(section, plan) {
@@ -566,17 +946,24 @@ import Footer from '../components/Footer.astro';
       stopwatchInterval = null;
     }
     stopwatchStatus = 'paused';
+    saveStopwatchState('paused');
     renderStopwatchState(section, plan);
+    renderSessionIndicator();
   }
 
   function resumeStopwatch(section, plan) {
     if (stopwatchInterval) return;
     stopwatchStatus = 'running';
+    saveStopwatchState('running');
     stopwatchInterval = setInterval(function () {
       stopwatchSeconds++;
+      if (stopwatchSeconds % 5 === 0) {
+        saveStopwatchState('running');
+      }
       renderStopwatchState(section, plan);
     }, 1000);
     renderStopwatchState(section, plan);
+    renderSessionIndicator();
   }
 
   function stopStopwatch(section, plan) {
@@ -585,7 +972,9 @@ import Footer from '../components/Footer.astro';
       stopwatchInterval = null;
     }
     stopwatchStatus = 'stopped';
+    clearStopwatchState();
     renderStopwatchState(section, plan);
+    renderSessionIndicator();
   }
 
   function resetStopwatch(section, plan) {
@@ -593,12 +982,14 @@ import Footer from '../components/Footer.astro';
       clearInterval(stopwatchInterval);
       stopwatchInterval = null;
     }
+    clearStopwatchState();
     stopwatchSeconds = 0;
     stopwatchStatus = 'idle';
     timerSeconds = 300;
     timerStatus = 'idle';
     currentTool = 'timer';
     renderActionTools(plan);
+    renderSessionIndicator();
   }
 
   function renderCheckIn(plan) {
@@ -632,11 +1023,12 @@ import Footer from '../components/Footer.astro';
 
         <div class="flex items-center justify-between py-3 border-b border-hairline">
           <span class="text-sm text-body">Today's Target</span>
-          <span class="text-sm text-ink font-medium">${plan.target} min</span>
+          <span class="text-sm text-ink font-medium">${todayEntry ? todayEntry.target : plan.target} min</span>
         </div>
     `;
 
     if (todayEntry) {
+      var todayAchieved = todayEntry.actualMinutes >= todayEntry.target;
       html += `
         <div class="flex items-center justify-between py-3 border-b border-hairline">
           <span class="text-sm text-body">Today's Progress</span>
@@ -644,7 +1036,7 @@ import Footer from '../components/Footer.astro';
         </div>
         <div class="flex items-center justify-between py-3">
           <span class="text-sm text-body">Status</span>
-          <span class="text-sm font-medium ${todayEntry.actualMinutes >= plan.target ? 'text-success' : 'text-body'}">${todayEntry.actualMinutes >= plan.target ? 'Target Achieved' : 'In Progress'}</span>
+          <span class="text-sm font-medium ${todayAchieved ? 'text-success' : 'text-body'}">${todayAchieved ? 'Target Achieved' : 'In Progress'}</span>
         </div>
         <div class="bg-canvas-soft rounded-md p-4 text-center">
           <p class="text-sm text-body leading-relaxed">${escapeHtml(todayEntry.feedback)}</p>
@@ -750,7 +1142,105 @@ import Footer from '../components/Footer.astro';
     };
 
     saveCheckIns(checkIns);
-    renderCheckIn(plan);
+
+    var adjusted = evaluateAdjustment(plan);
+    if (adjusted) {
+      updatePlanDisplay(plan);
+    }
+
+    if (isPlanComplete(plan)) {
+      renderPlan(plan);
+    } else {
+      renderCheckIn(plan);
+      renderAdjustmentHistory();
+    }
+  }
+
+  function showInterstitial(plan, answers, onDismiss) {
+    var obstacleMessages = {
+      "I know what to do but can't start": 'Your plan is built around helping you take the first step.',
+      'It feels overwhelming': 'Your plan starts gently so it never feels overwhelming.',
+      'I get distracted': 'Your plan is designed to work with your focus, not against it.',
+      'I lack motivation': 'Your plan focuses on consistency, not motivation.',
+      'I feel too tired': 'Your plan respects your energy and keeps things sustainable.',
+      "I don't have enough time": 'Your plan fits into the time you actually have.',
+      'I simply forget': 'Your plan helps make your habit a natural part of your day.',
+      'Nothing specific': 'Your plan is designed for your situation.',
+    };
+
+    var message = 'Your plan is designed for your situation.';
+    if (Array.isArray(answers.obstacles)) {
+      for (var i = 0; i < answers.obstacles.length; i++) {
+        var obs = answers.obstacles[i];
+        if (obstacleMessages[obs]) {
+          message = obstacleMessages[obs];
+          break;
+        }
+      }
+    }
+
+    var overlay = document.createElement('div');
+    overlay.id = 'plan-intro-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);opacity:0;transition:opacity 0.4s ease;cursor:pointer;';
+    overlay.innerHTML = `
+      <div class="text-center px-6 max-w-[400px]" style="transform:translateY(12px);transition:transform 0.4s ease">
+        <div class="w-14 h-14 bg-primary rounded-full flex items-center justify-center mx-auto mb-5">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20V10M18 20V4M6 20v-4"/>
+          </svg>
+        </div>
+        <h2 class="text-xl font-semibold tracking-[-0.6px] text-ink mb-1">${escapeHtml(plan.habit)}</h2>
+        <p class="text-sm text-body mb-6">${escapeHtml(plan.goal)}</p>
+
+        <div class="flex items-center justify-center gap-6 mb-6">
+          <div class="text-center">
+            <div class="text-lg font-semibold tracking-[-0.6px] text-ink">${plan.target}</div>
+            <div class="font-mono text-[10px] text-mute tracking-normal uppercase mt-0.5">Target</div>
+          </div>
+          <div class="text-center">
+            <div class="text-lg font-semibold tracking-[-0.6px] text-ink">${plan.minimum}</div>
+            <div class="font-mono text-[10px] text-mute tracking-normal uppercase mt-0.5">Minimum</div>
+          </div>
+          <div class="text-center">
+            <div class="text-lg font-semibold tracking-[-0.6px] text-ink">${plan.maximum}</div>
+            <div class="font-mono text-[10px] text-mute tracking-normal uppercase mt-0.5">Maximum</div>
+          </div>
+        </div>
+
+        <div class="bg-canvas-soft rounded-md px-4 py-3">
+          <p class="text-sm text-body leading-relaxed">${escapeHtml(message)}</p>
+        </div>
+
+        <p class="text-xs text-mute mt-6">Tap anywhere or wait 3 seconds</p>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    requestAnimationFrame(function () {
+      overlay.style.opacity = '1';
+      var inner = overlay.firstElementChild;
+      if (inner) inner.style.transform = 'translateY(0)';
+    });
+
+    var dismissed = false;
+    function dismiss() {
+      if (dismissed) return;
+      dismissed = true;
+      clearTimeout(autoTimer);
+      overlay.style.opacity = '0';
+      var inner = overlay.firstElementChild;
+      if (inner) inner.style.transform = 'translateY(12px)';
+      setTimeout(function () {
+        if (document.body.contains(overlay)) {
+          document.body.removeChild(overlay);
+        }
+        onDismiss();
+      }, 300);
+    }
+
+    var autoTimer = setTimeout(dismiss, 3000);
+    overlay.addEventListener('click', dismiss);
   }
 
   function init() {
@@ -758,6 +1248,7 @@ import Footer from '../components/Footer.astro';
       const savedPlan = getSavedPlan();
 
       if (savedPlan && savedPlan.habit) {
+        evaluateAdjustment(savedPlan);
         renderPlan(savedPlan);
         return;
       }
@@ -771,7 +1262,9 @@ import Footer from '../components/Footer.astro';
 
       const plan = generatePlan(answers);
       savePlan(plan);
-      renderPlan(plan);
+      showInterstitial(plan, answers, function () {
+        renderPlan(plan);
+      });
     } catch (e) {
       renderError(e.message || 'Could not generate your plan. Please try the assessment again.');
     }
