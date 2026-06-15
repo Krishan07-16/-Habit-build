@@ -9,32 +9,168 @@ const { currentPage = 'home' } = Astro.props;
       <span class="text-sm font-medium tracking-[-0.28px] text-ink">Habit Build</span>
     </a>
 
-    <div class="flex items-center gap-4">
+    <div class="hidden md:flex items-center gap-4">
       <a
         href="/assessment"
-        class="text-sm no-underline px-2 py-1 rounded-full transition-colors ${currentPage === 'assessment' ? 'text-ink font-medium bg-canvas-soft' : 'text-body hover:text-ink'}"
-        >Assessment</a
-      >
+        class:list={[
+          "text-sm no-underline px-2.5 py-1 rounded-full transition-colors",
+          currentPage === 'assessment' ? 'text-ink font-medium bg-canvas-soft-2 border border-hairline' : 'text-body hover:text-ink',
+        ]}
+      >Assessment</a>
       <a
         href="/plan"
-        class="text-sm no-underline px-2 py-1 rounded-full transition-colors ${currentPage === 'plan' ? 'text-ink font-medium bg-canvas-soft' : 'text-body hover:text-ink'}"
-        >Plan</a
-      >
-      <a
-        href="/stopwatch"
-        class="text-sm no-underline px-2 py-1 rounded-full transition-colors ${currentPage === 'stopwatch' ? 'text-ink font-medium bg-canvas-soft' : 'text-body hover:text-ink'}"
-        >Stopwatch</a
-      >
+        class:list={[
+          "text-sm no-underline px-2.5 py-1 rounded-full transition-colors",
+          currentPage === 'plan' ? 'text-ink font-medium bg-canvas-soft-2 border border-hairline' : 'text-body hover:text-ink',
+        ]}
+      >Plan</a>
       <a
         href="/progress"
-        class="text-sm no-underline px-2 py-1 rounded-full transition-colors ${currentPage === 'progress' ? 'text-ink font-medium bg-canvas-soft' : 'text-body hover:text-ink'}"
-        >Progress</a
-      >
+        class:list={[
+          "text-sm no-underline px-2.5 py-1 rounded-full transition-colors",
+          currentPage === 'progress' ? 'text-ink font-medium bg-canvas-soft-2 border border-hairline' : 'text-body hover:text-ink',
+        ]}
+      >Progress</a>
       <a
+        id="nav-start-btn"
         href="/assessment"
         class="inline-flex items-center h-7 px-2 bg-primary text-on-primary text-sm font-medium rounded-sm no-underline transition-opacity hover:opacity-90"
-        >Start</a
+      >Start</a>
+      <button id="theme-toggle" class="flex items-center justify-center w-8 h-8 rounded-full text-body hover:text-ink hover:bg-canvas-soft transition-colors" aria-label="Toggle dark mode">
+        <svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg id="icon-moon" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+
+    <div class="flex items-center gap-1 md:hidden">
+      <button id="theme-toggle-mobile" class="flex items-center justify-center w-8 h-8 rounded-full text-body hover:text-ink transition-colors" aria-label="Toggle dark mode">
+        <svg class="icon-sun-m" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="icon-moon-m hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <button
+        id="mobile-menu-btn"
+        class="flex items-center justify-center w-10 h-10 text-ink"
+        aria-label="Open menu"
+        aria-expanded="false"
       >
+        <svg id="icon-menu" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <line x1="3" y1="5" x2="17" y2="5"/>
+          <line x1="3" y1="10" x2="17" y2="10"/>
+          <line x1="3" y1="15" x2="17" y2="15"/>
+        </svg>
+        <svg id="icon-close" class="hidden" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <line x1="5" y1="5" x2="15" y2="15"/>
+          <line x1="15" y1="5" x2="5" y2="15"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="mobile-menu" class="md:hidden hidden border-t border-hairline bg-canvas">
+    <div class="max-w-[1400px] mx-auto px-4 py-4 flex flex-col gap-1">
+      <a
+        href="/assessment"
+        class:list([
+          "text-sm no-underline px-3 py-2.5 rounded-md transition-colors",
+          currentPage === 'assessment' ? 'text-ink font-medium bg-canvas-soft-2 border border-hairline' : 'text-body hover:text-ink hover:bg-canvas-soft',
+        ]}
+      >Assessment</a>
+      <a
+        href="/plan"
+        class:list={[
+          "text-sm no-underline px-3 py-2.5 rounded-md transition-colors",
+          currentPage === 'plan' ? 'text-ink font-medium bg-canvas-soft-2 border border-hairline' : 'text-body hover:text-ink hover:bg-canvas-soft',
+        ]}
+      >Plan</a>
+      <a
+        href="/progress"
+        class:list={[
+          "text-sm no-underline px-3 py-2.5 rounded-md transition-colors",
+          currentPage === 'progress' ? 'text-ink font-medium bg-canvas-soft-2 border border-hairline' : 'text-body hover:text-ink hover:bg-canvas-soft',
+        ]}
+      >Progress</a>
+      <div class="border-t border-hairline mt-2 pt-2">
+        <a
+          id="mobile-start-btn"
+          href="/assessment"
+          class="inline-flex items-center justify-center h-10 w-full bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90"
+        >Start</a>
+      </div>
     </div>
   </div>
 </nav>
+
+<script>
+  // Fix #2: Start button goes to /plan if plan exists
+  function updateStartButtons() {
+    try {
+      var hasPlan = localStorage.getItem('habit-build-plan');
+      var parsed = hasPlan ? JSON.parse(hasPlan) : null;
+      var url = parsed && parsed.habit ? '/plan' : '/assessment';
+      var desktop = document.getElementById('nav-start-btn');
+      var mobile = document.getElementById('mobile-start-btn');
+      if (desktop) desktop.setAttribute('href', url);
+      if (mobile) mobile.setAttribute('href', url);
+    } catch {}
+  }
+  updateStartButtons();
+
+  // Dark mode toggle
+  function applyTheme(dark) {
+    document.documentElement.classList.toggle('dark', dark);
+    var sun = document.getElementById('icon-sun');
+    var moon = document.getElementById('icon-moon');
+    var sunM = document.querySelector('.icon-sun-m');
+    var moonM = document.querySelector('.icon-moon-m');
+    if (sun) sun.classList.toggle('hidden', dark);
+    if (moon) moon.classList.toggle('hidden', !dark);
+    if (sunM) sunM.classList.toggle('hidden', dark);
+    if (moonM) moonM.classList.toggle('hidden', !dark);
+    try { localStorage.setItem('habit-build-theme', dark ? 'dark' : 'light'); } catch {}
+  }
+
+  function initTheme() {
+    try {
+      var saved = localStorage.getItem('habit-build-theme');
+      if (saved === 'dark') return true;
+      if (saved === 'light') return false;
+    } catch {}
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  var isDark = initTheme();
+  applyTheme(isDark);
+
+  document.getElementById('theme-toggle')?.addEventListener('click', function () {
+    isDark = !isDark; applyTheme(isDark);
+  });
+  document.getElementById('theme-toggle-mobile')?.addEventListener('click', function () {
+    isDark = !isDark; applyTheme(isDark);
+  });
+
+  // Mobile menu
+  const btn = document.getElementById('mobile-menu-btn');
+  const menu = document.getElementById('mobile-menu');
+  const iconMenu = document.getElementById('icon-menu');
+  const iconClose = document.getElementById('icon-close');
+
+  if (btn && menu && iconMenu && iconClose) {
+    btn.addEventListener('click', () => {
+      const open = menu.classList.toggle('hidden');
+      const isOpen = !open;
+      btn.setAttribute('aria-expanded', String(isOpen));
+      btn.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+      iconMenu.classList.toggle('hidden', isOpen);
+      iconClose.classList.toggle('hidden', !isOpen);
+    });
+    menu.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        menu.classList.add('hidden');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', 'Open menu');
+        iconMenu.classList.remove('hidden');
+        iconClose.classList.add('hidden');
+      });
+    });
+  }
+</script>

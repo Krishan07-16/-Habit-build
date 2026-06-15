@@ -1,0 +1,46 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout title="Privacy — Habit Build" description="Your privacy matters. Here's how Habit Build handles your data.">
+  <Nav currentPage="home" />
+
+  <main class="flex-1">
+    <div class="max-w-[600px] mx-auto px-4 md:px-6 py-24 md:py-32">
+      <h1 class="text-2xl md:text-3xl font-semibold tracking-[-1.28px] text-ink mb-8">Privacy</h1>
+
+      <div class="space-y-8 text-sm text-body leading-relaxed">
+        <section>
+          <h2 class="text-base font-semibold text-ink mb-2">Data Stays on Your Device</h2>
+          <p>Habit Build stores all your data locally in your browser using localStorage. No data is ever sent to a server, logged, or shared with anyone.</p>
+        </section>
+
+        <section>
+          <h2 class="text-base font-semibold text-ink mb-2">No Account Required</h2>
+          <p>You don't need to create an account or provide any personal information to use Habit Build. There are no sign-ups, no emails, and no passwords.</p>
+        </section>
+
+        <section>
+          <h2 class="text-base font-semibold text-ink mb-2">No Tracking</h2>
+          <p>Habit Build does not use analytics, cookies, or tracking scripts. Your habit data and usage patterns remain private to you.</p>
+        </section>
+
+        <section>
+          <h2 class="text-base font-semibold text-ink mb-2">Clearing Your Data</h2>
+          <p>You can clear all stored data at any time by clearing your browser's localStorage for this site. No residual data is kept elsewhere.</p>
+        </section>
+
+        <section>
+          <h2 class="text-base font-semibold text-ink mb-2">Third Parties</h2>
+          <p>Habit Build does not integrate with any third-party services, APIs, or data processors. The app is fully self-contained in your browser.</p>
+        </section>
+
+        <p class="text-xs text-mute pt-4 border-t border-hairline">Last updated: June 2026</p>
+      </div>
+    </div>
+  </main>
+
+  <Footer />
+</Layout>

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-ink: #171717;
   --color-body: #4d4d4d;
@@ -47,5 +49,27 @@
   ::selection {
     background-color: var(--color-ink);
     color: #f2f2f2;
+  }
+
+  .dark body,
+  .dark {
+    --color-ink: #ededed;
+    --color-body: #a1a1a1;
+    --color-mute: #666666;
+    --color-hairline: #2a2a2a;
+    --color-hairline-strong: #555555;
+    --color-canvas: #111111;
+    --color-canvas-soft: #0a0a0a;
+    --color-canvas-soft-2: #1a1a1a;
+    --color-primary: #ededed;
+    --color-on-primary: #111111;
+    --color-error-soft: #3a1515;
+    --color-warning-soft: #3a2a0a;
+    --color-link-bg-soft: #0a1a30;
+  }
+
+  .dark body {
+    background-color: var(--color-canvas-soft);
+    color: var(--color-ink);
   }
 }

@@ -10,7 +10,7 @@ import Footer from '../components/Footer.astro';
   <main>
     <!-- Hero -->
     <section class="relative bg-canvas overflow-hidden">
-      <div class="absolute inset-0 opacity-40" aria-hidden="true">
+      <div class="absolute inset-0 opacity-60" aria-hidden="true">
         <div class="absolute inset-0" style="
           background:
             radial-gradient(ellipse 80% 60% at 50% -20%, rgba(0,124,240,0.3) 0%, transparent 60%),
@@ -21,18 +21,18 @@ import Footer from '../components/Footer.astro';
 
       <div class="relative max-w-[1400px] mx-auto px-4 md:px-6 pt-24 pb-32 md:pt-32 md:pb-48">
         <div class="max-w-2xl mx-auto text-center">
-          <span class="inline-flex items-center h-5 px-2 bg-canvas-soft text-body text-xs rounded-full font-mono tracking-normal mb-6">Beta</span>
           <h1 class="text-4xl md:text-5xl font-semibold leading-tight tracking-[-2.4px] text-ink mb-4">
             Build habits that stick.
           </h1>
-          <p class="text-lg md:text-xl text-body leading-relaxed mb-10 max-w-lg mx-auto">
+          <p class="text-lg md:text-xl text-body leading-relaxed mb-6 max-w-lg mx-auto">
             A gentle, sustainable approach to building habits. No streaks, no shame. Just consistency.
           </p>
+          <p class="text-base text-body/60 mb-8 italic">"I can't make myself start."</p>
           <div class="flex items-center justify-center gap-3">
             <a
               href="/assessment"
               class="inline-flex items-center h-12 px-6 bg-primary text-on-primary text-base font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90"
-            >Start Assessment</a>
+            >Start with 5 minutes</a>
             <a
               href="#how-it-works"
               class="inline-flex items-center h-12 px-6 bg-canvas text-ink text-base font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft"
@@ -42,8 +42,62 @@ import Footer from '../components/Footer.astro';
       </div>
     </section>
 
-    <!-- Features -->
+    <!-- How It Works -->
     <section id="how-it-works" class="bg-canvas-soft py-24 md:py-32">
+      <div class="max-w-[1400px] mx-auto px-4 md:px-6">
+        <div class="text-center mb-16">
+          <span class="font-mono text-xs text-mute tracking-normal uppercase">How It Works</span>
+          <h2 class="text-3xl md:text-4xl font-semibold leading-tight tracking-[-1.28px] text-ink mt-3 mb-4">
+            Four steps to consistency.
+          </h2>
+        </div>
+
+        <div class="grid md:grid-cols-4 gap-4">
+          <div class="text-center">
+            <div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center mx-auto mb-3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><polyline points="9 14 11 16 15 12"/></svg>
+          </div>
+            <h3 class="text-sm font-semibold text-ink mb-1">Assessment</h3>
+            <p class="text-xs text-body">Answer 7 questions about your habit, obstacles, and goals.</p>
+          </div>
+          <div class="text-center">
+            <div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center mx-auto mb-3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+            <h3 class="text-sm font-semibold text-ink mb-1">Your Plan</h3>
+            <p class="text-xs text-body">Get a personalized 30-day plan with minimum, target, and maximum.</p>
+          </div>
+          <div class="text-center">
+            <div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center mx-auto mb-3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+            <h3 class="text-sm font-semibold text-ink mb-1">Show Up</h3>
+            <p class="text-xs text-body">Use the resistance timer. Just 5 minutes. Then you can stop.</p>
+          </div>
+          <div class="text-center">
+            <div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center mx-auto mb-3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          </div>
+            <h3 class="text-sm font-semibold text-ink mb-1">Track Progress</h3>
+            <p class="text-xs text-body">See your consistency grow. Your plan adapts to your life.</p>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-center mt-12">
+          <div class="hidden md:flex items-center gap-2 text-hairline-strong">
+            <div class="w-8 h-px bg-hairline-strong"></div>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            <div class="w-8 h-px bg-hairline-strong"></div>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            <div class="w-8 h-px bg-hairline-strong"></div>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Philosophy -->
+    <section class="bg-canvas py-24 md:py-32">
       <div class="max-w-[1400px] mx-auto px-4 md:px-6">
         <div class="text-center mb-16">
           <span class="font-mono text-xs text-mute tracking-normal uppercase">Philosophy</span>
@@ -96,12 +150,12 @@ import Footer from '../components/Footer.astro';
           Ready to build your habit?
         </h2>
         <p class="text-base md:text-lg text-white/70 max-w-md mx-auto mb-10">
-          Answer a few questions and get a personalized 30-day plan designed around your life.
+          Building a new habit doesn't have to be hard. Get a 30-day plan in 2 minutes.
         </p>
         <a
           href="/assessment"
           class="inline-flex items-center h-12 px-8 bg-on-primary text-primary text-base font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90"
-        >Take the Assessment</a>
+        >Start with 5 minutes</a>
       </div>
     </section>
   </main>
