@@ -29,7 +29,7 @@ export function spawnSparkles(container) {
     el.style.setProperty('--dy', Math.sin(angle * Math.PI / 180) * dist + 'px');
     el.style.left = (container.offsetWidth / 2 - 2) + 'px';
     el.style.top = (container.offsetHeight / 2 - 2) + 'px';
-    el.style.background = ['#0070f3', '#171717', '#50e3c2', '#7928ca'][Math.floor(Math.random() * 4)];
+    el.style.background = ['var(--color-primary)', 'var(--color-success)', 'var(--color-ink)', 'var(--color-link)'][Math.floor(Math.random() * 4)];
     el.style.animationDelay = (Math.random() * 0.3) + 's';
     el.style.width = (2 + Math.random() * 4) + 'px';
     el.style.height = el.style.width;

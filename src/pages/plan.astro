@@ -98,7 +98,7 @@ import Footer from '../components/Footer.astro';
 </style>
 
 <script>
-  import { escapeHtml, getSavedPlan, savePlan, getAssessmentAnswers, clearAssessment, getSavedCheckIns, saveCheckIns, savePreviousPlan, savePreviousCheckIns, getPreviousPlan, getPreviousCheckIns, getAdjustments, getCurrentDay, isPlanComplete, hasThreeDayStreak, hasCantStartObstacle, computeWeeklyRamp, buildExplanation, generatePlan as genPlan, getTodayString, getDateString, getFeedback, saveCheckInMinutes } from '../lib/utils.js';
+  import { escapeHtml, getSavedPlan, savePlan, getAssessmentAnswers, clearAssessment, getSavedCheckIns, saveCheckIns, savePreviousPlan, savePreviousCheckIns, getPreviousPlan, getPreviousCheckIns, getAdjustments, getCurrentDay, isPlanComplete, hasThreeDayStreak, computeWeeklyRamp, buildExplanation, generatePlan as genPlan, getTodayString, getDateString, getFeedback, saveCheckInMinutes } from '../lib/utils.js';
   import { timerState, getSavedTimerDuration, saveTimerDuration, getTodayResistanceSets, incrementResistanceSets, getTodayResistanceMinutes, addTodayResistanceMinutes, formatTimer, saveTimerState, clearTimerState, restoreTimerState } from '../lib/timer.js';
   import { stopwatchState, formatStopwatch, saveStopwatchSession, saveStopwatchState, clearStopwatchState, restoreStopwatchState } from '../lib/stopwatch.js';
   import { showFocusMode, updateFocusMode, hideFocusMode } from '../lib/focus-mode.js';
@@ -118,7 +118,7 @@ import Footer from '../components/Footer.astro';
       clearStopwatchState();
     } else if (timerState.status === 'running' || timerState.status === 'paused') {
       if (timerState.interval) { clearInterval(timerState.interval); timerState.interval = null; }
-      var savedDuration = getSavedTimerDuration();
+      var savedDuration = 300;
       var elapsedSeconds = savedDuration - timerState.seconds;
       clearTimerState();
       timerState.seconds = savedDuration;
@@ -427,11 +427,11 @@ import Footer from '../components/Footer.astro';
 
   function renderTimerEarlyExit(section, plan) {
     var todaySets = getTodayResistanceSets();
-    section.innerHTML = '<div class="bg-canvas rounded-md p-6 md:p-8 border border-hairline"><div class="flex items-center gap-2 mb-6"><span class="text-xs text-mute">Resistance Timer</span></div><div class="text-center"><div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="stroke-ink" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div><p class="text-lg font-semibold  text-ink mb-1">You started. That counts.</p><p class="text-sm text-body mb-1">You showed up. That\'s the win.</p><p class="text-xs text-mute mb-4">Consistency is hard for everyone. Every rep builds the habit.</p>' + (todaySets > 0 ? '<div class="mb-4"><span class="text-xs text-mute">Resistance sets today: ' + todaySets + '</span></div>' : '') + '<button id="act-early-reset" class="timer-action-btn inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Start Another</button></div></div>';
+    section.innerHTML = '<div class="bg-canvas rounded-md p-8 md:p-10 border border-hairline"><div class="flex items-center gap-2 mb-6"><span class="text-xs text-mute">Resistance Timer</span></div><div class="text-center"><div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="stroke-ink" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div><p class="text-lg font-semibold  text-ink mb-1">You started. That counts.</p><p class="text-sm text-body mb-1">You showed up. That\'s the win.</p><p class="text-xs text-mute mb-4">Consistency is hard for everyone. Every rep builds the habit.</p>' + (todaySets > 0 ? '<div class="mb-4"><span class="text-xs text-mute">Resistance sets today: ' + todaySets + '</span></div>' : '') + '<button id="act-early-reset" class="timer-action-btn inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Start Another</button></div></div>';
     section.addEventListener('click', function (e) {
       var btn = e.target.closest('button');
       if (!btn) return;
-      if (btn.id === 'act-early-reset') { timerState.earlyExit = false; timerState.seconds = getSavedTimerDuration(); timerState.status = 'idle'; renderTimerTools(plan); }
+      if (btn.id === 'act-early-reset') { timerState.earlyExit = false; timerState.seconds = 300; timerState.status = 'idle'; renderTimerTools(plan); }
     });
   }
 
@@ -439,36 +439,20 @@ import Footer from '../components/Footer.astro';
     var isRunning = timerState.status === 'running';
     var isPaused = timerState.status === 'paused';
     var isIdle = !isRunning && !isPaused;
-    var cantStart = hasCantStartObstacle();
-    var durationOptions = [300, 120, 600];
-    var durationLabels = ['5 min', '2 min', '10 min'];
-    var savedDuration = getSavedTimerDuration();
-
-    function durBtn(seconds, label) {
-      var active = timerState.seconds === seconds ? 'bg-primary text-on-primary border-primary' : 'bg-canvas text-ink border-hairline hover:bg-canvas-soft';
-      return '<button class="inline-flex items-center h-8 px-3 text-xs font-medium rounded-full no-underline border transition-colors ' + active + '" data-dur="' + seconds + '">' + label + '</button>';
-    }
-
-    var durHtml = '<div class="flex items-center justify-center gap-2 mb-4">';
-    for (var di = 0; di < durationOptions.length; di++) durHtml += durBtn(durationOptions[di], durationLabels[di]);
-    durHtml += '</div>';
-
-    var r = 52, circ = 2 * Math.PI * r;
+    timerState.seconds = 300;
+    saveTimerDuration(300);
+    var savedDuration = 300;
+    var r = 66, circ = 2 * Math.PI * r;
     var completed = savedDuration > 0 ? Math.max(0, savedDuration - timerState.seconds) : 0;
     var pct = savedDuration > 0 ? Math.min(100, Math.round((completed / savedDuration) * 100)) : 0;
     var offset = circ * (1 - pct / 100);
 
-    section.innerHTML = '<div class="bg-canvas rounded-md p-6 md:p-8 border border-hairline"><div class="flex items-center gap-2 mb-6"><span class="text-xs text-mute">Resistance Timer</span></div><p class="text-sm text-body leading-relaxed mb-1">Just do ' + (savedDuration / 60) + ' minutes. Then you can stop.</p><div class="bg-warning-soft rounded-md px-4 py-2.5 mb-6 text-center"><p class="text-sm font-medium text-warning-deep">This is hard for everyone. That\'s why it counts.</p></div><div class="text-center">' + (isIdle ? durHtml : '') + (isIdle && cantStart ? '<p class="text-xs text-mute text-center mb-4">Just getting started? The 2-minute option keeps it easy.</p>' : '') + '<div class="flex items-center justify-center mb-6"><div class="relative"><svg width="132" height="132" viewBox="0 0 132 132"><circle cx="66" cy="66" r="' + r + '" fill="none" class="stroke-hairline" stroke-width="6"/><circle cx="66" cy="66" r="' + r + '" fill="none" class="stroke-ink" stroke-width="6" stroke-dasharray="' + circ + '" stroke-dashoffset="' + offset + '" stroke-linecap="round" transform="rotate(-90 66 66)" style="transition: stroke-dashoffset 0.5s"/></svg><div class="absolute inset-0 flex items-center justify-center"><span class="text-5xl font-semibold  text-ink tabular-nums">' + formatTimer(timerState.seconds) + '</span></div></div></div><div class="flex items-center justify-center gap-3">' + (isIdle ? '<button id="act-timer-start" class="timer-action-btn inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Start Timer</button>' : '') + (isRunning ? '<button id="act-timer-pause" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Pause</button>' : '') + (isPaused ? '<button id="act-timer-resume" class="timer-action-btn inline-flex items-center h-10 px-5 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Resume</button>' : '') + (isRunning || isPaused ? '<button id="act-timer-reset" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Reset</button>' : '') + '</div>' + (isIdle && getTodayResistanceSets() > 0 ? '<div class="mt-4 pt-4 border-t border-hairline"><span class="text-xs text-mute">Resistance sets today: ' + getTodayResistanceSets() + '</span></div>' : '') + '</div></div>';
+    section.innerHTML = '<div class="bg-canvas rounded-md p-8 md:p-10 border border-hairline"><div class="flex items-center gap-2 mb-6"><span class="text-xs text-mute">Resistance Timer</span></div><p class="text-sm text-body leading-relaxed mb-1">Just do 5 minutes. Then you can stop.</p><div class="bg-warning-soft rounded-md px-4 py-2.5 mb-6 text-center"><p class="text-sm font-medium text-warning-deep">This is hard for everyone. That\'s why it counts.</p></div><div class="text-center"><div class="flex items-center justify-center mb-6"><div class="relative"><svg width="164" height="164" viewBox="0 0 164 164"><circle cx="82" cy="82" r="' + r + '" fill="none" class="stroke-hairline" stroke-width="6"/><circle cx="82" cy="82" r="' + r + '" fill="none" class="stroke-ink" stroke-width="6" stroke-dasharray="' + circ + '" stroke-dashoffset="' + offset + '" stroke-linecap="round" transform="rotate(-90 82 82)" style="transition: stroke-dashoffset 0.5s"/></svg><div class="absolute inset-0 flex items-center justify-center"><span class="text-6xl font-semibold  text-ink tabular-nums">' + formatTimer(timerState.seconds) + '</span></div></div></div><div class="flex items-center justify-center gap-3">' + (isIdle ? '<button id="act-timer-start" class="timer-action-btn inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Start Timer</button>' : '') + (isRunning ? '<button id="act-timer-pause" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Pause</button>' : '') + (isPaused ? '<button id="act-timer-resume" class="timer-action-btn inline-flex items-center h-10 px-5 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Resume</button>' : '') + (isRunning || isPaused ? '<button id="act-timer-reset" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Reset</button>' : '') + '</div>' + (isIdle && getTodayResistanceSets() > 0 ? '<div class="mt-4 pt-4 border-t border-hairline"><span class="text-xs text-mute">Resistance sets today: ' + getTodayResistanceSets() + '</span></div>' : '') + '</div></div>';
 
     section.addEventListener('click', function (e) {
       var btn = e.target.closest('button');
       if (!btn) return;
-      if (btn.hasAttribute('data-dur')) {
-        var secs = parseInt(btn.getAttribute('data-dur'), 10);
-        timerState.seconds = secs; timerState.status = 'idle';
-        if (timerState.interval) { clearInterval(timerState.interval); timerState.interval = null; }
-        saveTimerDuration(secs); renderTimerTools(plan);
-      } else if (btn.id === 'act-timer-start') startTimer(plan);
+      if (btn.id === 'act-timer-start') startTimer(plan);
       else if (btn.id === 'act-timer-pause') pauseTimer(plan);
       else if (btn.id === 'act-timer-resume') resumeTimer(plan);
       else if (btn.id === 'act-timer-reset') resetTimer(plan);
@@ -478,7 +462,7 @@ import Footer from '../components/Footer.astro';
   function renderTimerFinished(section, plan) {
     var todaySets = getTodayResistanceSets();
     var curDay = getCurrentDay(plan.startDate);
-    section.innerHTML = '<div id="timer-finished-card" class="bg-canvas rounded-md p-6 md:p-8 ring-scale border border-hairline relative overflow-hidden"><div class="text-center"><div class="w-14 h-14 bg-primary rounded-full flex items-center justify-center mx-auto mb-4 "><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><p class="text-xl font-semibold  text-ink mb-1">Rep completed! <span class="text-primary">(set ' + todaySets + ')</span></p><p class="text-sm text-body mb-2">Your habit is getting stronger.</p>' + (todaySets > 0 ? '<div class="mb-4"><span class="text-xs text-mute">Resistance sets today: ' + todaySets + '</span></div>' : '') + '<div class="max-w-sm mx-auto mb-4"><textarea id="finish-note" placeholder="How did it feel? (optional)" class="w-full text-sm text-ink bg-canvas rounded-md px-3 py-2 border border-hairline resize-none focus:outline-none focus:border-ink/40 transition-colors" rows="2"></textarea></div><div class="flex items-center justify-center gap-3 flex-wrap"><button id="act-share-finish" class="timer-action-btn inline-flex items-center h-10 px-5 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Share That You Showed Up</button><button id="act-done" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Done</button></div><div class="mt-4 pt-3 border-t border-hairline"><button id="act-keep-going-finish" class="text-sm text-mute hover:text-ink transition-colors cursor-pointer underline underline-offset-2 decoration-hairline hover:decoration-ink">Keep going with stopwatch &rarr;</button></div></div></div>';
+    section.innerHTML = '<div id="timer-finished-card" class="bg-canvas rounded-md p-8 md:p-10 ring-scale border border-hairline relative overflow-hidden"><div class="text-center"><div class="w-14 h-14 bg-primary rounded-full flex items-center justify-center mx-auto mb-4 "><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><p class="text-xl font-semibold  text-ink mb-1">Rep completed! <span class="text-primary">(set ' + todaySets + ')</span></p><p class="text-sm text-body mb-2">Your habit is getting stronger.</p>' + (todaySets > 0 ? '<div class="mb-4"><span class="text-xs text-mute">Resistance sets today: ' + todaySets + '</span></div>' : '') + '<div class="max-w-sm mx-auto mb-4"><textarea id="finish-note" placeholder="How did it feel? (optional)" class="w-full text-sm text-ink bg-canvas rounded-md px-3 py-2 border border-hairline resize-none focus:outline-none focus:border-ink/40 transition-colors" rows="2"></textarea></div><div class="flex items-center justify-center gap-3 flex-wrap"><button id="act-share-finish" class="timer-action-btn inline-flex items-center h-10 px-5 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Share That You Showed Up</button><button id="act-done" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Done</button></div><div class="mt-4 pt-3 border-t border-hairline"><button id="act-keep-going-finish" class="text-sm text-mute hover:text-ink transition-colors cursor-pointer underline underline-offset-2 decoration-hairline hover:decoration-ink">Keep going with stopwatch &rarr;</button></div></div></div>';
     var card = document.getElementById('timer-finished-card');
     if (card) { setTimeout(function () { spawnSparkles(card); }, 50); }
     section.addEventListener('click', function (e) {
@@ -551,7 +535,7 @@ import Footer from '../components/Footer.astro';
         incrementResistanceSets();
         playChime();
         try { if (navigator.vibrate) navigator.vibrate(200); } catch {}
-        var timerMinutes = Math.round(getSavedTimerDuration() / 60);
+        var timerMinutes = Math.round(300 / 60);
         if (timerMinutes > 0) {
           addTodayResistanceMinutes(timerMinutes);
           var ck = getSavedCheckIns(); var today = getTodayString();
@@ -586,7 +570,7 @@ import Footer from '../components/Footer.astro';
         incrementResistanceSets();
         playChime();
         try { if (navigator.vibrate) navigator.vibrate(200); } catch {}
-        var timerMinutes = Math.round(getSavedTimerDuration() / 60);
+        var timerMinutes = Math.round(300 / 60);
         if (timerMinutes > 0) {
           addTodayResistanceMinutes(timerMinutes);
           var ck = getSavedCheckIns(); var today = getTodayString();
@@ -607,7 +591,7 @@ import Footer from '../components/Footer.astro';
   function resetTimer(plan) {
     if (timerState.interval) { clearInterval(timerState.interval); timerState.interval = null; }
     clearTimerState(); hideFocusMode();
-    timerState.earlyExit = false; timerState.seconds = getSavedTimerDuration(); timerState.status = 'idle';
+    timerState.earlyExit = false; timerState.seconds = 300; timerState.status = 'idle';
     currentTool = 'timer'; renderTimerTools(plan);
   }
 
@@ -653,7 +637,7 @@ import Footer from '../components/Footer.astro';
     if (stopwatchState.interval) { clearInterval(stopwatchState.interval); stopwatchState.interval = null; }
     clearStopwatchState(); hideFocusMode();
     stopwatchState.seconds = 0; stopwatchState.status = 'idle';
-    timerState.seconds = getSavedTimerDuration(); timerState.status = 'idle'; currentTool = 'timer';
+    timerState.seconds = 300; timerState.status = 'idle'; currentTool = 'timer';
     renderActionTools(plan); renderSessionIndicator();
   }
 
@@ -692,7 +676,7 @@ import Footer from '../components/Footer.astro';
           incrementResistanceSets();
           playChime();
           try { if (navigator.vibrate) navigator.vibrate(200); } catch {}
-          var timerMinutes = Math.round(getSavedTimerDuration() / 60);
+          var timerMinutes = Math.round(300 / 60);
           if (timerMinutes > 0) {
             addTodayResistanceMinutes(timerMinutes);
             var ck = getSavedCheckIns(); var today = getTodayString();
@@ -819,7 +803,7 @@ import Footer from '../components/Footer.astro';
 
     document.getElementById('btn-start-timer-recovery')?.addEventListener('click', function () {
       if (timerState.interval) { clearInterval(timerState.interval); timerState.interval = null; }
-      timerState.seconds = getSavedTimerDuration(); timerState.status = 'idle';
+      timerState.seconds = 300; timerState.status = 'idle';
       renderActionTools(plan);
       var s = document.getElementById('timer-tools'); if (s) s.scrollIntoView({ behavior: 'smooth' });
     });

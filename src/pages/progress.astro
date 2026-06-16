@@ -96,7 +96,7 @@ import Footer from '../components/Footer.astro';
       }
       if (firstReal && firstReal.month !== lastMonth) {
         lastMonth = firstReal.month;
-        cells += '<text x="0" y="' + (wi * (cellSize + gap) + cellSize - 2) + '" font-size="9" fill="var(--color-mute)" font-family="monospace">' + monthNames[firstReal.month] + '</text>';
+        cells += '<text x="0" y="' + (wi * (cellSize + gap) + cellSize - 2) + '" font-size="9" fill="var(--color-mute)" >' + monthNames[firstReal.month] + '</text>';
       }
       for (var di = 0; di < weeks[wi].length; di++) {
         var cell = weeks[wi][di];

@@ -90,7 +90,7 @@ export function renderTaskSwitchPanel() {
   return `
     <div id="task-switch-panel" class="bg-canvas rounded-md p-5" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
       <div class="flex items-center gap-2 mb-3">
-        <span class="font-mono text-xs text-mute tracking-normal uppercase">Feeling stuck?</span>
+        <span class="text-xs text-body">Feeling stuck?</span>
       </div>
       <p class="text-sm text-body leading-relaxed mb-3">
         You don't have to do the same thing. Switch to something lighter and keep the habit alive.
@@ -100,8 +100,8 @@ export function renderTaskSwitchPanel() {
         <p class="text-xs text-mute mt-0.5">${escapeHtml(suggestion.duration)}</p>
       </div>
       <div class="flex items-center gap-2">
-        <button id="btn-switch-task" class="inline-flex items-center h-8 px-3 bg-primary text-on-primary text-xs font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Try This</button>
-        <button id="btn-dismiss-task" class="inline-flex items-center h-8 px-3 bg-canvas text-ink text-xs font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Dismiss</button>
+        <button id="btn-switch-task" class="inline-flex items-center h-8 px-3 bg-primary text-on-primary text-xs font-medium rounded-full no-underline transition-opacity hover:opacity-90">Try This</button>
+        <button id="btn-dismiss-task" class="inline-flex items-center h-8 px-3 bg-canvas text-ink text-xs font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Dismiss</button>
       </div>
     </div>
   `;
