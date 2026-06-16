@@ -10,7 +10,7 @@ import Footer from '../components/Footer.astro';
   <main class="flex-1 flex flex-col">
     <div class="max-w-[600px] mx-auto px-4 md:px-6 w-full flex-1 flex items-center justify-center">
       <div class="w-full py-4 md:py-6">
-        <p class="text-center text-xs text-mute font-mono tracking-normal mb-6">7 questions &middot; about 2 minutes</p>
+        <p class="text-center text-xs text-mute mb-6">7 questions &middot; about 2 minutes</p>
         <div id="app"></div>
       </div>
     </div>
@@ -196,10 +196,10 @@ import Footer from '../components/Footer.astro';
     return `
       <div class="mb-10 fade-in">
         <div class="flex items-center justify-between mb-2">
-          <span class="font-mono text-xs text-mute tracking-normal">${label}</span>
-          <span class="font-mono text-xs text-mute tracking-normal">${Math.round(pct)}%</span>
+          <span class="text-xs text-mute">${label}</span>
+          <span class="text-xs text-mute">${Math.round(pct)}%</span>
         </div>
-        <div class="h-1 bg-canvas-soft-2 rounded-full overflow-hidden">
+        <div class="h-1 bg-canvas-subtle rounded-full overflow-hidden">
           <div class="h-full bg-primary rounded-full transition-all duration-500" style="width:${pct}%"></div>
         </div>
       </div>
@@ -220,7 +220,7 @@ import Footer from '../components/Footer.astro';
           type="text"
           value="${escapeHtml(saved || '')}"
           placeholder="${escapeHtml(q.placeholder || '')}"
-          class="w-full h-12 px-3 bg-canvas text-ink text-base border border-hairline rounded-sm outline-none transition-colors focus:border-ink"
+          class="w-full h-12 px-3 bg-canvas text-ink text-base border border-hairline rounded-md outline-none transition-colors focus:border-ink"
           autocomplete="off"
         />
       `;
@@ -230,7 +230,7 @@ import Footer from '../components/Footer.astro';
           id="input-${q.id}"
           rows="3"
           placeholder="${escapeHtml(q.placeholder || '')}"
-          class="w-full px-3 py-3 bg-canvas text-ink text-base border border-hairline rounded-sm outline-none resize-none transition-colors focus:border-ink"
+          class="w-full px-3 py-3 bg-canvas text-ink text-base border border-hairline rounded-md outline-none resize-none transition-colors focus:border-ink"
         >${escapeHtml(saved || '')}</textarea>
       `;
     } else if (q.type === 'radio') {
@@ -238,10 +238,10 @@ import Footer from '../components/Footer.astro';
       inputHtml += q.options.map((opt, i) => {
         const checked = saved === opt ? 'checked' : '';
         return `
-          <label class="flex items-center gap-3 px-4 h-12 bg-canvas border border-hairline rounded-sm cursor-pointer transition-colors hover:border-ink has-[:checked]:border-ink has-[:checked]:bg-canvas-soft">
+          <label class="flex items-center gap-3 px-4 h-12 bg-canvas border border-hairline rounded-md cursor-pointer transition-colors hover:border-ink has-[:checked]:border-ink has-[:checked]:bg-canvas-soft">
             <input type="radio" name="${q.id}" value="${escapeHtml(opt)}" ${checked} class="appearance-none w-4 h-4 border-2 border-hairline-strong rounded-full shrink-0 checked:border-[5px] checked:border-ink transition-all" />
             <span class="text-sm text-ink flex-1">${escapeHtml(opt)}</span>
-            <span class="font-mono text-[10px] text-hairline-strong tabular-nums">${i + 1}</span>
+            <span class="text-[10px] text-hairline-strong tabular-nums">${i + 1}</span>
           </label>
         `;
       }).join('');
@@ -251,10 +251,10 @@ import Footer from '../components/Footer.astro';
       inputHtml += q.options.map((opt, i) => {
         const checked = Array.isArray(saved) && saved.includes(opt) ? 'checked' : '';
         return `
-          <label class="flex items-center gap-3 px-4 h-12 bg-canvas border border-hairline rounded-sm cursor-pointer transition-colors hover:border-ink has-[:checked]:border-ink has-[:checked]:bg-canvas-soft">
+          <label class="flex items-center gap-3 px-4 h-12 bg-canvas border border-hairline rounded-md cursor-pointer transition-colors hover:border-ink has-[:checked]:border-ink has-[:checked]:bg-canvas-soft">
             <input type="checkbox" name="${q.id}" value="${escapeHtml(opt)}" ${checked} class="appearance-none w-4 h-4 border-2 border-hairline-strong rounded-sm shrink-0 checked:bg-ink checked:border-ink transition-all" />
             <span class="text-sm text-ink flex-1">${escapeHtml(opt)}</span>
-            <span class="font-mono text-[10px] text-hairline-strong tabular-nums">${i + 1}</span>
+            <span class="text-[10px] text-hairline-strong tabular-nums">${i + 1}</span>
           </label>
         `;
       }).join('');
@@ -267,8 +267,8 @@ import Footer from '../components/Footer.astro';
     app.innerHTML = `
       ${renderProgress(step, total)}
       ${encouragementMsg ? '<div id="encouragement-banner" class="fade-in mb-4 bg-success/10 rounded-md px-4 py-2.5 text-center"><p class="text-sm text-success font-medium">' + escapeHtml(encouragementMsg) + '</p></div>' : ''}
-      <div id="question-card" class="${animClass} bg-canvas rounded-md p-6 md:p-8" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
-        <h2 class="text-xl md:text-2xl font-semibold tracking-[-0.96px] text-ink mb-2">${escapeHtml(q.question)}${optionalBadge}</h2>
+      <div id="question-card" class="${animClass} bg-canvas rounded-lg p-6 md:p-8 border border-hairline">
+        <h2 class="text-xl md:text-2xl font-semibold text-ink mb-2">${escapeHtml(q.question)}${optionalBadge}</h2>
         ${q.help ? `<p class="text-sm text-body mb-6">${escapeHtml(q.help)}</p>` : ''}
         <div id="input-area" class="space-y-2">
           ${inputHtml}
@@ -280,11 +280,11 @@ import Footer from '../components/Footer.astro';
           </p>
         </div>
         <div class="flex items-center justify-between mt-8">
-          <button id="btn-back" class="inline-flex items-center h-10 px-4 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft ${step === 1 ? 'invisible' : ''}">Back</button>
-          <button id="btn-next" class="inline-flex items-center h-10 px-5 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">${isLast ? 'Complete' : 'Next'}</button>
+          <button id="btn-back" class="inline-flex items-center h-10 px-4 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft ${step === 1 ? 'invisible' : ''}">Back</button>
+          <button id="btn-next" class="inline-flex items-center h-10 px-5 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">${isLast ? 'Complete' : 'Next'}</button>
         </div>
         ${isLast ? '<div class="text-center mt-3"><a href="/assessment?step=' + (total + 1) + '" class="text-xs text-mute hover:text-link transition-colors no-underline">Review answers</a></div>' : ''}
-        ${q.type === 'radio' || q.type === 'checkbox' ? '<p class="text-[11px] text-hairline-strong text-center mt-3 font-mono tracking-normal">Press 1\u2013' + q.options.length + ' to select</p>' : ''}
+        ${q.type === 'radio' || q.type === 'checkbox' ? '<p class="text-[11px] text-hairline-strong text-center mt-3">Press 1\u2013' + q.options.length + ' to select</p>' : ''}
       </div>
     `;
 
@@ -488,14 +488,14 @@ import Footer from '../components/Footer.astro';
             <polyline points="20 6 9 17 4 12"/>
           </svg>
         </div>
-        <h1 class="text-2xl md:text-3xl font-semibold tracking-[-1.28px] text-ink mb-2">Assessment Complete</h1>
+        <h1 class="text-2xl md:text-3xl font-semibold text-ink mb-2">Assessment Complete</h1>
         <p class="text-sm text-body">Here is a summary of your responses. Your personalized 30-day plan is ready.</p>
       </div>
 
-      <div class="bg-canvas rounded-md p-6 md:p-8 fade-in" style="box-shadow: 0px 2px 2px rgba(0,0,0,0.04), 0px 8px 8px -8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06) inset;">
+      <div class="bg-canvas rounded-lg p-6 md:p-8 fade-in border border-hairline">
         ${items.map((item, i) => `
           <div class="flex items-start gap-4 py-3 ${i < items.length - 1 ? 'border-b border-hairline' : ''}">
-            <span class="w-24 shrink-0 font-mono text-xs text-mute tracking-normal uppercase pt-0.5">${escapeHtml(item.label)}</span>
+            <span class="w-24 shrink-0 text-xs text-mute pt-0.5">${escapeHtml(item.label)}</span>
             <span class="text-sm text-ink flex-1">${escapeHtml(item.value)}</span>
             <button class="edit-summary-btn text-xs text-link hover:underline shrink-0 mt-0.5 bg-transparent border-none cursor-pointer p-0" data-step="${i + 1}">Edit</button>
           </div>
@@ -503,8 +503,8 @@ import Footer from '../components/Footer.astro';
       </div>
 
       <div class="flex flex-col sm:flex-row items-center justify-center mt-8 gap-3">
-        <a href="/plan" class="inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-[100px] no-underline transition-opacity hover:opacity-90">Start with 5 minutes</a>
-        <button id="btn-restart" class="inline-flex items-center h-10 px-4 bg-canvas text-ink text-sm font-medium rounded-[100px] no-underline border border-hairline transition-colors hover:bg-canvas-soft">Start Over</button>
+        <a href="/plan" class="inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Start with 5 minutes</a>
+        <button id="btn-restart" class="inline-flex items-center h-10 px-4 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Start Over</button>
       </div>
     `;
 
