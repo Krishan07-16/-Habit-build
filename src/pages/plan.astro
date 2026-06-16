@@ -481,7 +481,8 @@ import Footer from '../components/Footer.astro';
       timerState.seconds--;
       if (timerState.seconds <= 0) {
         timerState.seconds = 0; clearInterval(timerState.interval); timerState.interval = null;
-        timerState.status = 'finished'; clearTimerState(); hideFocusMode();
+        timerState.status = 'finished'; clearTimerState();
+        showFocusMode('Resistance Timer', formatTimer(0), plan, 'Rep completed! Your habit is getting stronger.', 'timer', 'completed');
         if (typeof posthog !== 'undefined') posthog.capture('timer_completed');
         incrementResistanceSets();
         playChime();
@@ -517,7 +518,8 @@ import Footer from '../components/Footer.astro';
       timerState.seconds--;
       if (timerState.seconds <= 0) {
         timerState.seconds = 0; clearInterval(timerState.interval); timerState.interval = null;
-        timerState.status = 'finished'; clearTimerState(); hideFocusMode();
+        timerState.status = 'finished'; clearTimerState();
+        showFocusMode('Resistance Timer', formatTimer(0), plan, 'Rep completed! Your habit is getting stronger.', 'timer', 'completed');
         if (typeof posthog !== 'undefined') posthog.capture('timer_completed');
         incrementResistanceSets();
         playChime();
@@ -542,9 +544,11 @@ import Footer from '../components/Footer.astro';
 
   function resetTimer(plan) {
     if (timerState.interval) { clearInterval(timerState.interval); timerState.interval = null; }
-    clearTimerState(); hideFocusMode();
+    clearTimerState();
     timerState.earlyExit = false; timerState.seconds = 300; timerState.status = 'idle';
-    currentTool = 'timer'; renderTimerTools(plan);
+    currentTool = 'timer';
+    showFocusMode('Resistance Timer', formatTimer(300), plan, 'Just do 5 minutes. Then you can stop.', 'timer', 'idle');
+    renderTimerTools(plan);
   }
 
   function startStopwatch(plan) {
@@ -582,15 +586,17 @@ import Footer from '../components/Footer.astro';
 
   function stopStopwatch(plan) {
     if (stopwatchState.interval) { clearInterval(stopwatchState.interval); stopwatchState.interval = null; }
-    stopwatchState.status = 'stopped'; clearStopwatchState(); hideFocusMode();
+    stopwatchState.status = 'stopped'; clearStopwatchState();
+    showFocusMode('Stopwatch', formatStopwatch(stopwatchState.seconds), plan, null, 'stopwatch', 'stopped');
     renderStopwatchTools(plan); renderSessionIndicator();
   }
 
   function resetStopwatch(plan) {
     if (stopwatchState.interval) { clearInterval(stopwatchState.interval); stopwatchState.interval = null; }
-    clearStopwatchState(); hideFocusMode();
+    clearStopwatchState();
     stopwatchState.seconds = 0; stopwatchState.status = 'idle';
     timerState.seconds = 300; timerState.status = 'idle'; currentTool = 'timer';
+    showFocusMode('Stopwatch', formatStopwatch(0), plan, null, 'stopwatch', 'idle');
     renderActionTools(plan); renderSessionIndicator();
   }
 
@@ -626,7 +632,8 @@ import Footer from '../components/Footer.astro';
         timerState.seconds--;
         if (timerState.seconds <= 0) {
           timerState.seconds = 0; clearInterval(timerState.interval); timerState.interval = null;
-          timerState.status = 'finished'; clearTimerState(); hideFocusMode();
+          timerState.status = 'finished'; clearTimerState();
+          showFocusMode('Resistance Timer', formatTimer(0), plan, 'Rep completed! Your habit is getting stronger.', 'timer', 'completed');
           if (typeof posthog !== 'undefined') posthog.capture('timer_completed');
           incrementResistanceSets();
           playChime();
