@@ -134,6 +134,7 @@ import Footer from '../components/Footer.astro';
   const STORAGE_KEY = 'habit-build-assessment';
   let slideDirection = 'right';
   let encouragementMsg = '';
+  let assessmentStarted = false;
 
   const encouragementMap = {
     habit: 'Great choice.',
@@ -167,6 +168,11 @@ import Footer from '../components/Footer.astro';
     const stepParam = parseInt(urlParams.get('step'), 10);
     const step = !isNaN(stepParam) && stepParam >= 1 && stepParam <= questions.length + 1 ? stepParam : 1;
     const isComplete = step === questions.length + 1;
+
+    if (step === 1 && !assessmentStarted) {
+      assessmentStarted = true;
+      if (typeof posthog !== 'undefined') posthog.capture('assessment_started');
+    }
 
     const app = document.getElementById('app');
     if (!app) return;
@@ -431,6 +437,8 @@ import Footer from '../components/Footer.astro';
     answers[q.id] = value;
     saveAnswers(answers);
 
+    if (typeof posthog !== 'undefined') posthog.capture('question_answered', { question_id: q.id, step: step });
+
     encouragementMsg = encouragementMap[q.id] || '';
     if (step === questions.length) {
       window.location.href = '/plan';
@@ -462,6 +470,7 @@ import Footer from '../components/Footer.astro';
   }
 
   function renderSummary(app, answers) {
+    if (typeof posthog !== 'undefined') posthog.capture('assessment_completed');
     const labels = {
       habit: 'Habit',
       time: 'Current time',

@@ -91,6 +91,7 @@ import Footer from '../components/Footer.astro';
   let showCompare = false;
 
   function renderProgress() {
+    if (typeof posthog !== 'undefined') posthog.capture('progress_viewed');
     const app = document.getElementById('app');
     if (!app) return;
     const plan = getSavedPlan();

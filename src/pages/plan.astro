@@ -119,6 +119,7 @@ import Footer from '../components/Footer.astro';
       if (timerState.interval) { clearInterval(timerState.interval); timerState.interval = null; }
       var savedDuration = 300;
       var elapsedSeconds = savedDuration - timerState.seconds;
+      if (typeof posthog !== 'undefined') posthog.capture('timer_abandoned', { elapsed_seconds: elapsedSeconds });
       clearTimerState();
       timerState.seconds = savedDuration;
       timerState.earlyExit = true;
@@ -339,6 +340,7 @@ import Footer from '../components/Footer.astro';
       startDate: new Date().toISOString(),
     };
     savePlan(newPlan);
+    if (typeof posthog !== 'undefined') posthog.capture('plan_generated', { habit: newPlan.habit, target: newPlan.target, minimum: newPlan.minimum, maximum: newPlan.maximum });
     renderPlan(newPlan);
   }
 
@@ -351,6 +353,7 @@ import Footer from '../components/Footer.astro';
   function renderCompletionSummary(plan) {
     var app = document.getElementById('app');
     if (!app) return;
+    if (typeof posthog !== 'undefined') posthog.capture('plan_completed');
     var stats = getPlanStats();
     var trendSymbol = stats.trendPct > 0 ? '+' : '';
     var trendColor = stats.trendPct > 5 ? 'text-success' : stats.trendPct < -5 ? 'text-mute' : 'text-ink';
@@ -522,6 +525,7 @@ import Footer from '../components/Footer.astro';
 
   function startTimer(plan) {
     if (timerState.interval) return;
+    if (typeof posthog !== 'undefined') posthog.capture('timer_started');
     timerState.earlyExit = false; timerState.status = 'running';
     saveTimerState('running');
     showFocusMode('Resistance Timer', formatTimer(timerState.seconds), plan, "Just start. If you still want to stop after this, you can.");
@@ -530,6 +534,7 @@ import Footer from '../components/Footer.astro';
       if (timerState.seconds <= 0) {
         timerState.seconds = 0; clearInterval(timerState.interval); timerState.interval = null;
         timerState.status = 'finished'; clearTimerState(); hideFocusMode();
+        if (typeof posthog !== 'undefined') posthog.capture('timer_completed');
         incrementResistanceSets();
         playChime();
         try { if (navigator.vibrate) navigator.vibrate(200); } catch {}
@@ -565,6 +570,7 @@ import Footer from '../components/Footer.astro';
       if (timerState.seconds <= 0) {
         timerState.seconds = 0; clearInterval(timerState.interval); timerState.interval = null;
         timerState.status = 'finished'; clearTimerState(); hideFocusMode();
+        if (typeof posthog !== 'undefined') posthog.capture('timer_completed');
         incrementResistanceSets();
         playChime();
         try { if (navigator.vibrate) navigator.vibrate(200); } catch {}
@@ -595,6 +601,7 @@ import Footer from '../components/Footer.astro';
 
   function startStopwatch(plan) {
     if (stopwatchState.interval) return;
+    if (typeof posthog !== 'undefined') posthog.capture('stopwatch_started');
     stopwatchState.status = 'running'; saveStopwatchState('running');
     showFocusMode('Stopwatch', formatStopwatch(stopwatchState.seconds), plan);
     stopwatchState.interval = setInterval(function () {
@@ -642,6 +649,7 @@ import Footer from '../components/Footer.astro';
   function handleSaveSwSession(plan) {
     var minutes = Math.round(stopwatchState.seconds / 60);
     if (minutes < 1) minutes = 1;
+    if (typeof posthog !== 'undefined') posthog.capture('stopwatch_saved', { minutes: minutes });
     saveStopwatchSession(stopwatchState.seconds);
     var checkIns = getSavedCheckIns(); var todayStr = getTodayString();
     var todayEntry = checkIns[todayStr] || null;
@@ -671,6 +679,7 @@ import Footer from '../components/Footer.astro';
         if (timerState.seconds <= 0) {
           timerState.seconds = 0; clearInterval(timerState.interval); timerState.interval = null;
           timerState.status = 'finished'; clearTimerState(); hideFocusMode();
+          if (typeof posthog !== 'undefined') posthog.capture('timer_completed');
           incrementResistanceSets();
           playChime();
           try { if (navigator.vibrate) navigator.vibrate(200); } catch {}
@@ -739,7 +748,14 @@ import Footer from '../components/Footer.astro';
     }
 
     if (gapDays > 0) {
+      if (typeof posthog !== 'undefined') posthog.capture('gap_return', { gap_days: gapDays });
       html += '<div class="bg-link-bg-soft rounded-lg px-5 py-4 text-center"><div class="flex items-center justify-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><p class="text-sm font-semibold text-link leading-relaxed">You came back. That\'s a win. The habit is still alive.</p></div></div>';
+      var gapFeedbackKey = 'habit-build-gap-feedback-' + todayStr;
+      var hasGivenFeedback = false;
+      try { hasGivenFeedback = localStorage.getItem(gapFeedbackKey) !== null; } catch {}
+      if (!hasGivenFeedback) {
+        html += '<div id="gap-feedback" class="bg-canvas-soft rounded-md p-4 mt-4 text-center"><p class="text-sm text-body mb-3">What almost stopped you from coming back?</p><div class="flex flex-wrap justify-center gap-2 mb-3"><button data-reason="forgot" class="gap-reason-btn inline-flex items-center h-8 px-3 bg-canvas text-ink text-xs font-medium rounded-full border border-hairline transition-colors hover:bg-canvas-soft">I forgot</button><button data-reason="too-busy" class="gap-reason-btn inline-flex items-center h-8 px-3 bg-canvas text-ink text-xs font-medium rounded-full border border-hairline transition-colors hover:bg-canvas-soft">Too busy</button><button data-reason="no-motivation" class="gap-reason-btn inline-flex items-center h-8 px-3 bg-canvas text-ink text-xs font-medium rounded-full border border-hairline transition-colors hover:bg-canvas-soft">No motivation</button><button data-reason="overwhelmed" class="gap-reason-btn inline-flex items-center h-8 px-3 bg-canvas text-ink text-xs font-medium rounded-full border border-hairline transition-colors hover:bg-canvas-soft">Felt overwhelmed</button><button data-reason="other" class="gap-reason-btn inline-flex items-center h-8 px-3 bg-canvas text-ink text-xs font-medium rounded-full border border-hairline transition-colors hover:bg-canvas-soft">Other</button></div><p class="text-[10px] text-mute">This helps me improve Habit Build.</p></div>';
+      }
     } else if (yesterdayMissed) {
       if (hasStreak) {
         html += '<div class="bg-canvas rounded-md p-4 text-center border border-hairline"><p class="text-sm text-success font-medium">&#10003; You\'re back on track.</p></div>';
@@ -804,6 +820,17 @@ import Footer from '../components/Footer.astro';
       timerState.seconds = 300; timerState.status = 'idle';
       renderActionTools(plan);
       var s = document.getElementById('timer-tools'); if (s) s.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    document.querySelectorAll('.gap-reason-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var reason = btn.getAttribute('data-reason');
+        var feedbackKey = 'habit-build-gap-feedback-' + todayStr;
+        try { localStorage.setItem(feedbackKey, reason); } catch {}
+        if (typeof posthog !== 'undefined') posthog.capture('gap_feedback', { reason: reason });
+        var container = document.getElementById('gap-feedback');
+        if (container) { container.style.transition = 'opacity 0.3s'; container.style.opacity = '0.3'; }
+      });
     });
 
     renderTaskSwitchArea(plan);
@@ -878,6 +905,7 @@ import Footer from '../components/Footer.astro';
       if (!answers || !answers.habit) { renderError('Please complete the assessment first to generate your personalized plan.'); return; }
       var plan = genPlan(answers);
       savePlan(plan);
+      if (typeof posthog !== 'undefined') posthog.capture('plan_generated', { habit: plan.habit, target: plan.target, minimum: plan.minimum, maximum: plan.maximum });
       showInterstitial(plan, answers, function () {
         renderPlan(plan);
       });
