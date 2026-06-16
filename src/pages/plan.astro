@@ -104,7 +104,6 @@ import Footer from '../components/Footer.astro';
   import { showFocusMode, updateFocusMode, hideFocusMode } from '../lib/focus-mode.js';
   import { playChime, spawnSparkles } from '../lib/sparkle.js';
   import { evaluateAdjustment, calculateAdaptedTarget, getPlanStats } from '../lib/adjustments.js';
-  import { requestNotifPermission, isNotifEnabled, setNotifEnabled, getNotifTime, saveNotifTime, scheduleReminder, checkAndFireImmediateReminder } from '../lib/notifications.js';
   import { renderTaskSwitchPanel, dismissTaskSwitchPanel, refreshTaskSuggestion } from '../lib/task-switch.js';
 
   let currentTool = 'timer';
@@ -226,7 +225,7 @@ import Footer from '../components/Footer.astro';
       + weeklyReviewAreaHtml
       + (day <= 7 && !todayEntry ? '<div class="bg-canvas-soft rounded-lg px-4 py-3 mb-4 text-center border border-hairline"><p class="text-sm text-body font-medium">Week 1: Just sit. That\'s the goal.</p><p class="text-xs text-mute mt-1">The hardest part is starting. Every day you open this page, you\'re winning.</p></div>' : '')
       + '<div id="session-indicator" class="mb-4"></div>'
-      + '<details class="group mt-2 mb-4"><summary class="flex items-center gap-2 cursor-pointer text-sm text-mute font-medium hover:text-ink transition-colors"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-open:rotate-90 transition-transform"><polyline points="9 18 15 12 9 6"/></svg>Daily Reminder</summary><div class="mt-3" id="notification-settings"></div></details>'
+
       + '<div id="task-switch-area" class="mt-2 mb-4"></div>'
       + '<details class="group mt-2"><summary class="flex items-center gap-2 cursor-pointer text-sm text-mute font-medium hover:text-ink transition-colors"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-open:rotate-90 transition-transform"><polyline points="9 18 15 12 9 6"/></svg>Stopwatch</summary><div class="mt-3" id="stopwatch-collapsed"></div></details>'
       + '<details class="group mt-2"><summary class="flex items-center gap-2 cursor-pointer text-sm text-mute font-medium hover:text-ink transition-colors"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-open:rotate-90 transition-transform"><polyline points="9 18 15 12 9 6"/></svg>Your Plan</summary><div class="bg-canvas rounded-md p-5 md:p-6 space-y-4 mt-3 border border-hairline"><div class="grid grid-cols-3 gap-3 py-2 border-b border-hairline"><div class="text-center"><div id="plan-target-value" class="text-xl font-semibold  text-ink">' + plan.target + '</div><div class="text-xs text-mute mt-1">Target</div></div><div class="text-center"><div id="plan-minimum-value" class="text-xl font-semibold  text-ink">' + plan.minimum + '</div><div class="text-xs text-mute mt-1">Minimum</div></div><div class="text-center"><div id="plan-maximum-value" class="text-xl font-semibold  text-ink">' + plan.maximum + '</div><div class="text-xs text-mute mt-1">Maximum</div></div></div>' + renderPlanGuide(plan) + '</div></details>'
@@ -270,7 +269,6 @@ import Footer from '../components/Footer.astro';
     renderCheckIn(plan);
     renderAdjustmentHistory();
     renderSessionIndicator();
-    renderNotificationSettings();
     renderCollapsedStopwatch(plan);
     kickstartStopwatch(plan);
     kickstartTimer(plan);
@@ -833,38 +831,6 @@ import Footer from '../components/Footer.astro';
     document.getElementById('btn-dismiss-task')?.addEventListener('click', function () { dismissTaskSwitchPanel(); });
   }
 
-  function renderNotificationSettings() {
-    var section = document.getElementById('notification-settings');
-    if (!section) return;
-    var enabled = isNotifEnabled();
-    var savedTime = getNotifTime() || '08:00';
-
-    if (enabled) {
-      section.innerHTML = '<div class="bg-canvas-soft rounded-md px-4 py-3 flex items-center justify-between gap-3"><div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-success"></span><span class="text-xs text-body">Reminder active</span></div><div class="flex items-center gap-2"><input id="notif-time" type="time" value="' + savedTime + '" class="h-7 px-2 bg-canvas text-ink text-xs border border-hairline rounded-sm outline-none transition-colors focus:border-ink tabular-nums" /><button id="btn-disable-notif" class="inline-flex items-center h-7 px-2 bg-canvas text-mute text-xs font-medium rounded-full no-underline border border-hairline transition-colors hover:text-ink hover:bg-canvas-soft">Off</button></div></div>';
-
-      document.getElementById('notif-time')?.addEventListener('change', function (e) {
-        saveNotifTime(e.target.value);
-        scheduleReminder();
-      });
-      document.getElementById('btn-disable-notif')?.addEventListener('click', function () {
-        setNotifEnabled(false);
-        renderNotificationSettings();
-      });
-      return;
-    }
-
-    section.innerHTML = '<div class="bg-canvas-soft rounded-md px-4 py-3 flex items-center justify-between gap-3"><p class="text-xs text-body">Get a daily reminder at your preferred time.</p><button id="btn-enable-notif" class="inline-flex items-center h-7 px-3 bg-primary text-on-primary text-xs font-medium rounded-full no-underline transition-opacity hover:opacity-90 shrink-0">Enable</button></div>';
-
-    document.getElementById('btn-enable-notif')?.addEventListener('click', async function () {
-      var granted = await requestNotifPermission();
-      if (!granted) return;
-      setNotifEnabled(true);
-      saveNotifTime(savedTime);
-      scheduleReminder();
-      renderNotificationSettings();
-    });
-  }
-
   function showInterstitial(plan, answers, onDismiss) {
     var obstacleMessages = {
       "I know what to do but can't start": 'Your plan is built around helping you take the first step.',
@@ -906,8 +872,6 @@ import Footer from '../components/Footer.astro';
         restoreStopwatchState();
         restoreTimerState();
         renderPlan(savedPlan);
-        scheduleReminder();
-        checkAndFireImmediateReminder();
         return;
       }
       var answers = getAssessmentAnswers();
@@ -916,8 +880,6 @@ import Footer from '../components/Footer.astro';
       savePlan(plan);
       showInterstitial(plan, answers, function () {
         renderPlan(plan);
-        scheduleReminder();
-        checkAndFireImmediateReminder();
       });
     } catch (e) {
       renderError(e.message || 'Could not generate your plan. Please try the assessment again.');
