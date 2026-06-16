@@ -70,43 +70,22 @@ import Footer from '../components/Footer.astro';
       var d = new Date(planStart + 'T00:00:00'); d.setDate(d.getDate() + i);
       var ds = getDateString(d);
       var entry = checkIns[ds];
-      var level = 0;
-      if (entry) {
-        if (entry.actualMinutes >= entry.target) level = 3;
-        else if (entry.actualMinutes >= entry.minimum) level = 2;
-        else level = 1;
-      }
-      currentWeek.push({ date: ds, level: level, minutes: entry ? entry.actualMinutes : 0, month: d.getMonth() });
+      currentWeek.push(entry ? entry.actualMinutes : 0);
       if (currentWeek.length === 7) { weeks.push(currentWeek); currentWeek = []; }
     }
     if (currentWeek.length > 0) weeks.push(currentWeek);
-
     if (weeks.length === 0) return '';
 
-    var cellSize = 16; var gap = 4; var labelW = 20;
-    var svgW = labelW + 7 * (cellSize + gap); var svgH = weeks.length * (cellSize + gap);
-    var colors = ['#e5ddd3', '#bfb4a8', '#8c8278', '#c26e2b'];
-    var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    var cells = '';
-    var lastMonth = -1;
+    var html = '<div class="space-y-1">';
     for (var wi = 0; wi < weeks.length; wi++) {
-      var firstReal = null;
-      for (var ci = 0; ci < weeks[wi].length; ci++) {
-        if (weeks[wi][ci] !== null) { firstReal = weeks[wi][ci]; break; }
-      }
-      if (firstReal && firstReal.month !== lastMonth) {
-        lastMonth = firstReal.month;
-        cells += '<text x="0" y="' + (wi * (cellSize + gap) + cellSize - 2) + '" font-size="9" fill="var(--color-mute)" >' + monthNames[firstReal.month] + '</text>';
-      }
+      var active = 0, total = 0;
       for (var di = 0; di < weeks[wi].length; di++) {
-        var cell = weeks[wi][di];
-        if (!cell) continue;
-        var x = labelW + di * (cellSize + gap); var y = wi * (cellSize + gap);
-        var fill = colors[cell.level];
-        cells += '<rect x="' + x + '" y="' + y + '" width="' + cellSize + '" height="' + cellSize + '" rx="2" fill="' + fill + '"><title>' + cell.date + ': ' + cell.minutes + ' min</title></rect>';
+        if (weeks[wi][di] !== null) { total++; if (weeks[wi][di] > 0) active++; }
       }
+      html += '<div class="flex items-center justify-between py-1.5 border-b border-hairline last:border-b-0"><span class="text-sm text-body">Week ' + (wi + 1) + '</span><span class="text-sm text-ink font-medium">' + active + '/' + total + ' days</span></div>';
     }
-    return '<svg width="100%" viewBox="0 0 ' + svgW + ' ' + svgH + '" class="block">' + cells + '</svg><div class="flex items-center justify-end gap-1.5 mt-2"><span class="text-[10px] text-mute">Less</span><span class="w-3 h-3 rounded-sm" style="background:#e5ddd3"></span><span class="w-3 h-3 rounded-sm" style="background:#bfb4a8"></span><span class="w-3 h-3 rounded-sm" style="background:#8c8278"></span><span class="w-3 h-3 rounded-sm" style="background:#c26e2b"></span><span class="text-[10px] text-mute">More</span></div>';
+    html += '</div>';
+    return html;
   }
 
   let showCompare = false;
@@ -212,15 +191,15 @@ import Footer from '../components/Footer.astro';
 
     // Heatmap
     if (heatmapHtml) {
-      html += '<div class="bg-canvas rounded-md p-6 md:p-8 mb-6 border border-hairline"><div class="flex items-center gap-2 mb-4"><span class="text-xs text-mute">Consistency</span></div>' + heatmapHtml + '</div>';
+      html += '<div class="bg-canvas rounded-md p-6 md:p-8 mb-6 border border-hairline"><div class="flex items-center gap-2 mb-4"><span class="text-xs text-mute">How your weeks are going</span></div>' + heatmapHtml + '</div>';
     }
 
     // Daily Progress
-    html += '<div class="bg-canvas rounded-md p-6 md:p-8 space-y-5 mb-6 border border-hairline"><div class="flex items-center gap-2"><span class="text-xs text-mute">Daily Progress</span></div><div class="grid grid-cols-3 gap-3 py-3 border-b border-hairline"><div class="text-center"><div class="text-xl font-semibold  text-ink">' + plan.target + '</div><div class="text-xs text-mute mt-1">Target</div></div><div class="text-center"><div class="text-xl font-semibold  text-ink">' + plan.minimum + '</div><div class="text-xs text-mute mt-1">Minimum</div></div><div class="text-center"><div class="text-xl font-semibold  text-ink">' + plan.maximum + '</div><div class="text-xs text-mute mt-1">Maximum</div></div></div><div class="py-2"><div class="flex items-center justify-between mb-2"><span class="text-sm text-body">Today\'s Progress</span><span class="text-sm text-ink font-medium">' + (todayEntry ? todayEntry.actualMinutes : 0) + ' min</span></div><div class="h-2 bg-canvas-subtle rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full transition-all duration-500" style="width:' + dailyPct + '%"></div></div></div><div class="flex items-center justify-between py-2"><span class="text-sm text-body">Status</span><span class="text-sm font-medium ' + dailyStatusClass + '">' + dailyStatus + '</span></div>' + sparklineHtml + (todayEntry ? '<div class="bg-canvas-soft rounded-md p-3 text-center"><p class="text-sm text-body leading-relaxed">' + escapeHtml(todayEntry.feedback) + '</p>' + (todayEntry.note ? '<p class="text-xs text-mute mt-2 italic">"' + escapeHtml(todayEntry.note) + '"</p>' : '') + '</div>' : '<div class="bg-canvas-soft rounded-md p-3 text-center"><p class="text-sm text-body leading-relaxed">Start your habit today to begin tracking progress.</p></div>') + '</div>';
+    html += '<div class="bg-canvas rounded-md p-6 md:p-8 space-y-5 mb-6 border border-hairline"><div class="flex items-center gap-2"><span class="text-xs text-mute">How today went</span></div><div class="grid grid-cols-3 gap-3 py-3 border-b border-hairline"><div class="text-center"><div class="text-xl font-semibold  text-ink">' + plan.target + '</div><div class="text-xs text-mute mt-1">Target</div></div><div class="text-center"><div class="text-xl font-semibold  text-ink">' + plan.minimum + '</div><div class="text-xs text-mute mt-1">Minimum</div></div><div class="text-center"><div class="text-xl font-semibold  text-ink">' + plan.maximum + '</div><div class="text-xs text-mute mt-1">Maximum</div></div></div><div class="py-2"><div class="flex items-center justify-between mb-2"><span class="text-sm text-body">Today\'s Progress</span><span class="text-sm text-ink font-medium">' + (todayEntry ? todayEntry.actualMinutes : 0) + ' min</span></div><div class="h-2 bg-canvas-subtle rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full transition-all duration-500" style="width:' + dailyPct + '%"></div></div></div><div class="flex items-center justify-between py-2"><span class="text-sm text-body">Status</span><span class="text-sm font-medium ' + dailyStatusClass + '">' + dailyStatus + '</span></div>' + sparklineHtml + (todayEntry ? '<div class="bg-canvas-soft rounded-md p-3 text-center"><p class="text-sm text-body leading-relaxed">' + escapeHtml(todayEntry.feedback) + '</p>' + (todayEntry.note ? '<p class="text-xs text-mute mt-2 italic">"' + escapeHtml(todayEntry.note) + '"</p>' : '') + '</div>' : '<div class="bg-canvas-soft rounded-md p-3 text-center"><p class="text-sm text-body leading-relaxed">Start your habit today to begin tracking progress.</p></div>') + '</div>';
 
     // Weekly Progress
     if (weeklyActiveDays > 0) {
-    html += '<div class="bg-canvas rounded-md p-6 md:p-8 space-y-5 mb-6 border border-hairline"><div class="flex items-center gap-2"><span class="text-xs text-mute">Weekly Progress</span></div><div class="grid grid-cols-2 gap-4 py-3 border-b border-hairline"><div class="text-center"><div class="text-xl font-semibold  text-ink">' + weeklyTotal + '</div><div class="text-xs text-mute mt-1">Total min</div></div><div class="text-center"><div class="text-xl font-semibold  text-ink">' + weeklyAvg + '</div><div class="text-xs text-mute mt-1">Avg min/day</div></div></div><div class="py-2"><div class="flex items-center justify-between mb-2"><span class="text-sm text-body">Active Days</span><span class="text-sm text-ink font-medium">' + weeklyActiveDays + '/7</span></div><div class="h-2 bg-canvas-subtle rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full transition-all duration-500" style="width:' + weeklyConsistencyPct + '%"></div></div></div><div class="flex items-center justify-between py-2"><span class="text-sm text-body">Consistency</span><span class="text-sm font-medium text-ink">' + weeklyConsistencyPct + '%</span></div><div class="pt-2"><div class="flex items-end gap-1 h-16">';
+    html += '<div class="bg-canvas rounded-md p-6 md:p-8 space-y-5 mb-6 border border-hairline"><div class="flex items-center gap-2"><span class="text-xs text-mute">This week</span></div><div class="grid grid-cols-2 gap-4 py-3 border-b border-hairline"><div class="text-center"><div class="text-xl font-semibold  text-ink">' + weeklyTotal + '</div><div class="text-xs text-mute mt-1">Total min</div></div><div class="text-center"><div class="text-xl font-semibold  text-ink">' + weeklyAvg + '</div><div class="text-xs text-mute mt-1">Avg min/day</div></div></div><div class="py-2"><div class="flex items-center justify-between mb-2"><span class="text-sm text-body">Active Days</span><span class="text-sm text-ink font-medium">' + weeklyActiveDays + '/7</span></div><div class="h-2 bg-canvas-subtle rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full transition-all duration-500" style="width:' + weeklyConsistencyPct + '%"></div></div></div><div class="flex items-center justify-between py-2"><span class="text-sm text-body">Consistency</span><span class="text-sm font-medium text-ink">' + weeklyConsistencyPct + '%</span></div><div class="pt-2"><div class="flex items-end gap-1 h-16">';
     var dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     for (var wi = 0; wi < 7; wi++) {
       var wd = weekDays[wi];
@@ -231,10 +210,10 @@ import Footer from '../components/Footer.astro';
     }
 
     // Plan Progress (with target hits + best period + resistance sets)
-    html += '<div class="bg-canvas rounded-md p-6 md:p-8 space-y-5 mb-6 border border-hairline"><div class="flex items-center gap-2"><span class="text-xs text-mute">Plan Progress</span></div><div class="grid grid-cols-3 gap-3 py-3 border-b border-hairline"><div class="text-center"><div class="text-xl font-semibold  text-ink">' + monthlyTotal + '</div><div class="text-xs text-mute mt-1">Total min</div></div><div class="text-center"><div class="text-xl font-semibold  text-ink">' + monthlyActiveDays + '</div><div class="text-xs text-mute mt-1">Active days</div></div><div class="text-center"><div class="text-xl font-semibold  text-ink">Day ' + dayNum + '</div><div class="text-xs text-mute mt-1">of 30</div></div></div><div class="py-2 space-y-3"><div class="flex items-center justify-between"><span class="text-sm text-body">Plan Progress</span><span class="text-sm text-ink font-medium">' + Math.round((dayNum / 30) * 100) + '%</span></div><div class="h-2 bg-canvas-subtle rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full transition-all duration-500" style="width:' + Math.round((dayNum / 30) * 100) + '%"></div></div></div><div class="pt-3 border-t border-hairline space-y-2"><div class="flex items-center justify-between"><span class="text-sm text-body">Target hit</span><span class="text-sm text-ink font-medium">' + targetHits + ' / ' + Math.min(planDays, dayNum) + ' days</span></div><div class="flex items-center justify-between"><span class="text-sm text-body">Best consistency period</span><span class="text-sm text-ink font-medium">' + bestPeriod + ' day' + (bestPeriod !== 1 ? 's' : '') + '</span></div>' + (totalSets > 0 ? '<div class="flex items-center justify-between"><span class="text-sm text-body">Total resistance sets</span><span class="text-sm text-ink font-medium">' + totalSets + '</span></div>' : '') + '</div></div>';
+    html += '<div class="bg-canvas rounded-md p-6 md:p-8 space-y-5 mb-6 border border-hairline"><div class="flex items-center gap-2"><span class="text-xs text-mute">Your journey so far</span></div><div class="grid grid-cols-3 gap-3 py-3 border-b border-hairline"><div class="text-center"><div class="text-xl font-semibold  text-ink">' + monthlyTotal + '</div><div class="text-xs text-mute mt-1">Total min</div></div><div class="text-center"><div class="text-xl font-semibold  text-ink">' + monthlyActiveDays + '</div><div class="text-xs text-mute mt-1">Active days</div></div><div class="text-center"><div class="text-xl font-semibold  text-ink">Day ' + dayNum + '</div><div class="text-xs text-mute mt-1">of 30</div></div></div><div class="py-2 space-y-3"><div class="flex items-center justify-between"><span class="text-sm text-body">Plan Progress</span><span class="text-sm text-ink font-medium">' + Math.round((dayNum / 30) * 100) + '%</span></div><div class="h-2 bg-canvas-subtle rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full transition-all duration-500" style="width:' + Math.round((dayNum / 30) * 100) + '%"></div></div></div><div class="pt-3 border-t border-hairline space-y-2"><div class="flex items-center justify-between"><span class="text-sm text-body">Target hit</span><span class="text-sm text-ink font-medium">' + targetHits + ' / ' + Math.min(planDays, dayNum) + ' days</span></div><div class="flex items-center justify-between"><span class="text-sm text-body">Best consistency period</span><span class="text-sm text-ink font-medium">' + bestPeriod + ' day' + (bestPeriod !== 1 ? 's' : '') + '</span></div>' + (totalSets > 0 ? '<div class="flex items-center justify-between"><span class="text-sm text-body">Total resistance sets</span><span class="text-sm text-ink font-medium">' + totalSets + '</span></div>' : '') + '</div></div>';
 
     // Consistency Score
-    html += '<div class="bg-canvas rounded-md p-6 md:p-8 space-y-5 mb-6 border border-hairline"><div class="flex items-center gap-2"><span class="text-xs text-mute">Consistency Score</span></div><div class="text-center py-4"><div class="text-4xl font-semibold  text-ink mb-1">' + consistencyScore + '%</div><p class="text-sm text-body">Based on active days and daily participation</p></div><div class="h-2 bg-canvas-subtle rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full transition-all duration-500" style="width:' + consistencyScore + '%"></div></div><div class="bg-canvas-soft rounded-md p-3 text-center mt-2">' + (consistencyScore >= 80 ? '<p class="text-sm text-body leading-relaxed">Great consistency. Keep showing up.</p>' : consistencyScore >= 50 ? '<p class="text-sm text-body leading-relaxed">You are building momentum. Consistency grows over time.</p>' : '<p class="text-sm text-body leading-relaxed">Every day is a new opportunity. Start small and stay consistent.</p>') + '</div></div>';
+    html += '<div class="bg-canvas rounded-md p-6 md:p-8 space-y-5 mb-6 border border-hairline"><div class="flex items-center gap-2"><span class="text-xs text-mute">Your consistency</span></div><div class="text-center py-4"><div class="text-4xl font-semibold  text-ink mb-1">' + consistencyScore + '%</div><p class="text-sm text-body">Based on active days and daily participation</p></div><div class="h-2 bg-canvas-subtle rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full transition-all duration-500" style="width:' + consistencyScore + '%"></div></div><div class="bg-canvas-soft rounded-md p-3 text-center mt-2">' + (consistencyScore >= 80 ? '<p class="text-sm text-body leading-relaxed">Great consistency. Keep showing up.</p>' : consistencyScore >= 50 ? '<p class="text-sm text-body leading-relaxed">You are building momentum. Consistency grows over time.</p>' : '<p class="text-sm text-body leading-relaxed">Every day is a new opportunity. Start small and stay consistent.</p>') + '</div></div>';
 
     // Compare
     if (showCompare && prevStats) {
