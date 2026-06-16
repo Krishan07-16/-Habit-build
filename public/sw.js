@@ -1,4 +1,4 @@
-const CACHE_NAME = 'habit-build-v1';
+const CACHE_NAME = 'habit-build-v2';
 const ASSETS = [
   '/',
   '/assessment',
