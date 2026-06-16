@@ -82,7 +82,7 @@ import Footer from '../components/Footer.astro';
       for (var di = 0; di < weeks[wi].length; di++) {
         if (weeks[wi][di] !== null) { total++; if (weeks[wi][di] > 0) active++; }
       }
-      html += '<div class="flex items-center justify-between py-1.5 border-b border-hairline last:border-b-0"><span class="text-sm text-body">Week ' + (wi + 1) + '</span><span class="text-sm text-ink font-medium">' + active + '/' + total + ' days</span></div>';
+      html += '<div class="flex items-center justify-between py-1.5 border-b border-hairline last:border-b-0"><span class="text-sm text-body">Week ' + (wi + 1) + '</span><span class="text-sm text-ink font-medium">' + active + ' of ' + total + ' days</span></div>';
     }
     html += '</div>';
     return html;
