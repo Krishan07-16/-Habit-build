@@ -429,11 +429,7 @@ import Footer from '../components/Footer.astro';
   function renderTimerEarlyExit(section, plan) {
     var todaySets = getTodayResistanceSets();
     section.innerHTML = '<div class="bg-canvas rounded-md p-8 md:p-10 border border-hairline"><div class="flex items-center gap-2 mb-6"><span class="text-xs text-mute">Resistance Timer</span></div><div class="text-center"><div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="stroke-ink" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div><p class="text-lg font-semibold  text-ink mb-1">You started. That counts.</p><p class="text-sm text-body mb-1">You showed up. That\'s the win.</p><p class="text-xs text-mute mb-4">Consistency is hard for everyone. Every rep builds the habit.</p>' + (todaySets > 0 ? '<div class="mb-4"><span class="text-xs text-mute">Resistance sets today: ' + todaySets + '</span></div>' : '') + '<button id="act-early-reset" class="timer-action-btn inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Start Another</button></div></div>';
-    section.addEventListener('click', function (e) {
-      var btn = e.target.closest('button');
-      if (!btn) return;
-      if (btn.id === 'act-early-reset') { timerState.earlyExit = false; timerState.seconds = 300; timerState.status = 'idle'; renderTimerTools(plan); }
-    });
+
   }
 
   function renderTimerState(section, plan) {
@@ -450,14 +446,7 @@ import Footer from '../components/Footer.astro';
 
     section.innerHTML = '<div class="bg-canvas rounded-md p-8 md:p-10 border border-hairline"><div class="flex items-center gap-2 mb-6"><span class="text-xs text-mute">Resistance Timer</span></div><p class="text-sm text-body leading-relaxed mb-1">Just do 5 minutes. Then you can stop.</p><div class="bg-warning-soft rounded-md px-4 py-2.5 mb-6 text-center"><p class="text-sm font-medium text-warning-deep">This is hard for everyone. That\'s why it counts.</p></div><div class="text-center"><div class="flex items-center justify-center mb-6"><div class="relative"><svg width="164" height="164" viewBox="0 0 164 164"><circle cx="82" cy="82" r="' + r + '" fill="none" class="stroke-hairline" stroke-width="6"/><circle cx="82" cy="82" r="' + r + '" fill="none" class="stroke-ink" stroke-width="6" stroke-dasharray="' + circ + '" stroke-dashoffset="' + offset + '" stroke-linecap="round" transform="rotate(-90 82 82)" style="transition: stroke-dashoffset 0.5s"/></svg><div class="absolute inset-0 flex items-center justify-center"><span class="text-6xl font-semibold  text-ink tabular-nums">' + formatTimer(timerState.seconds) + '</span></div></div></div><div class="flex items-center justify-center gap-3">' + (isIdle ? '<button id="act-timer-start" class="timer-action-btn inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Start Timer</button>' : '') + (isRunning ? '<button id="act-timer-pause" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Pause</button>' : '') + (isPaused ? '<button id="act-timer-resume" class="timer-action-btn inline-flex items-center h-10 px-5 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Resume</button>' : '') + (isRunning || isPaused ? '<button id="act-timer-reset" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Reset</button>' : '') + '</div>' + (isIdle && getTodayResistanceSets() > 0 ? '<div class="mt-4 pt-4 border-t border-hairline"><span class="text-xs text-mute">Resistance sets today: ' + getTodayResistanceSets() + '</span></div>' : '') + '</div></div>';
 
-    section.addEventListener('click', function (e) {
-      var btn = e.target.closest('button');
-      if (!btn) return;
-      if (btn.id === 'act-timer-start') startTimer(plan);
-      else if (btn.id === 'act-timer-pause') pauseTimer(plan);
-      else if (btn.id === 'act-timer-resume') resumeTimer(plan);
-      else if (btn.id === 'act-timer-reset') resetTimer(plan);
-    });
+
   }
 
   function renderTimerFinished(section, plan) {
@@ -466,42 +455,7 @@ import Footer from '../components/Footer.astro';
     section.innerHTML = '<div id="timer-finished-card" class="bg-canvas rounded-md p-8 md:p-10 ring-scale border border-hairline relative overflow-hidden"><div class="text-center"><div class="w-14 h-14 bg-primary rounded-full flex items-center justify-center mx-auto mb-4 "><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><p class="text-xl font-semibold  text-ink mb-1">Rep completed! <span class="text-primary">(set ' + todaySets + ')</span></p><p class="text-sm text-body mb-2">Your habit is getting stronger.</p>' + (todaySets > 0 ? '<div class="mb-4"><span class="text-xs text-mute">Resistance sets today: ' + todaySets + '</span></div>' : '') + '<div class="max-w-sm mx-auto mb-4"><textarea id="finish-note" placeholder="How did it feel? (optional)" class="w-full text-sm text-ink bg-canvas rounded-md px-3 py-2 border border-hairline resize-none focus:outline-none focus:border-ink/40 transition-colors" rows="2"></textarea></div><div class="flex items-center justify-center gap-3 flex-wrap"><button id="act-share-finish" class="timer-action-btn inline-flex items-center h-10 px-5 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Share That You Showed Up</button><button id="act-done" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Done</button></div><div class="mt-4 pt-3 border-t border-hairline"><button id="act-keep-going-finish" class="text-sm text-mute hover:text-ink transition-colors cursor-pointer underline underline-offset-2 decoration-hairline hover:decoration-ink">Keep going with stopwatch &rarr;</button></div></div></div>';
     var card = document.getElementById('timer-finished-card');
     if (card) { setTimeout(function () { spawnSparkles(card); }, 50); }
-    section.addEventListener('click', function (e) {
-      var btn = e.target.closest('button');
-      if (!btn) return;
-      if (btn.id === 'act-share-finish') {
-        var noteEl = document.getElementById('finish-note');
-        var note = noteEl ? noteEl.value.trim() : '';
-        var text = 'Habit Build \u2014 Day ' + curDay + ': ' + escapeHtml(plan.habit) + '\n\u2713 Completed a resistance set (' + todaySets + ' today)\nTarget: ' + plan.target + ' min \u00B7 Minimum: ' + plan.minimum + ' min';
-        if (note) text += '\n\n\u201C' + note + '\u201D';
-        if (navigator.share) {
-          navigator.share({ title: 'Habit Build', text: text }).catch(function () {});
-        } else {
-          try { navigator.clipboard.writeText(text); } catch {}
-          var shareBtn = document.getElementById('act-share-finish');
-          if (shareBtn) { shareBtn.textContent = 'Copied!'; setTimeout(function () { if (shareBtn) shareBtn.textContent = 'Share That You Showed Up'; }, 2000); }
-        }
-      } else if (btn.id === 'act-done') {
-        var noteEl = document.getElementById('finish-note');
-        var note = noteEl ? noteEl.value.trim() : '';
-        if (note) {
-          var checkIns = getSavedCheckIns();
-          var todayStr = getTodayString();
-          if (checkIns[todayStr]) {
-            checkIns[todayStr].note = note;
-            saveCheckIns(checkIns);
-          }
-        }
-        renderCheckIn(plan);
-        var cs = document.getElementById('checkin-section');
-        if (cs) cs.scrollIntoView({ behavior: 'smooth' });
-      } else if (btn.id === 'act-keep-going-finish') {
-        currentTool = 'stopwatch'; stopwatchState.status = 'idle'; stopwatchState.seconds = 0;
-        renderCollapsedStopwatch(plan);
-        var details = document.querySelector('details:has(#stopwatch-tools)');
-        if (details) { details.open = true; setTimeout(function () { details.scrollIntoView({ behavior: 'smooth' }); }, 100); }
-      }
-    });
+
   }
 
   function renderStopwatchState(section, plan) {
@@ -511,16 +465,7 @@ import Footer from '../components/Footer.astro';
 
     section.innerHTML = '<div class="bg-canvas rounded-md p-6 md:p-8 border border-hairline"><div class="flex items-center gap-2 mb-6"><span class="text-xs text-mute">Stopwatch</span></div><div class="text-center"><div class="text-5xl font-semibold  text-ink tabular-nums mb-6">' + formatStopwatch(stopwatchState.seconds) + '</div><div class="flex items-center justify-center gap-3 flex-wrap">' + (!isRunning && !isPaused && !isStopped ? '<button id="act-sw-start" class="timer-action-btn inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Start Stopwatch</button>' : '') + (isRunning ? '<button id="act-sw-pause" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Pause</button>' : '') + (isPaused ? '<button id="act-sw-resume" class="timer-action-btn inline-flex items-center h-10 px-5 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Resume</button>' : '') + (isRunning ? '<button id="act-sw-stop" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Stop</button>' : '') + (isStopped ? '<button id="act-sw-save" class="inline-flex items-center h-10 px-6 bg-primary text-on-primary text-sm font-medium rounded-full no-underline transition-opacity hover:opacity-90">Save Session</button>' : '') + (isStopped ? '<button id="act-sw-reset" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Reset</button>' : '') + (isPaused ? '<button id="act-sw-reset-p" class="inline-flex items-center h-10 px-5 bg-canvas text-ink text-sm font-medium rounded-full no-underline border border-hairline transition-colors hover:bg-canvas-soft">Reset</button>' : '') + '</div></div></div>';
 
-    section.addEventListener('click', function (e) {
-      var btn = e.target.closest('button');
-      if (!btn) return;
-      if (btn.id === 'act-sw-start') startStopwatch(plan);
-      else if (btn.id === 'act-sw-pause') pauseStopwatch(plan);
-      else if (btn.id === 'act-sw-resume') resumeStopwatch(plan);
-      else if (btn.id === 'act-sw-stop') stopStopwatch(plan);
-      else if (btn.id === 'act-sw-save') { handleSaveSwSession(plan); resetStopwatch(plan); }
-      else if (btn.id === 'act-sw-reset' || btn.id === 'act-sw-reset-p') resetStopwatch(plan);
-    });
+
   }
 
   function startTimer(plan) {
@@ -892,6 +837,58 @@ import Footer from '../components/Footer.astro';
   }
 
   function init() {
+    document.getElementById('app').addEventListener('click', function (e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      var plan = planRef;
+      if (!plan) return;
+      var id = btn.id;
+      if (id === 'act-timer-start') startTimer(plan);
+      else if (id === 'act-timer-pause') pauseTimer(plan);
+      else if (id === 'act-timer-resume') resumeTimer(plan);
+      else if (id === 'act-timer-reset') resetTimer(plan);
+      else if (id === 'act-early-reset') { timerState.earlyExit = false; timerState.seconds = 300; timerState.status = 'idle'; renderTimerTools(plan); }
+      else if (id === 'act-share-finish') {
+        var noteEl = document.getElementById('finish-note');
+        var note = noteEl ? noteEl.value.trim() : '';
+        var todaySets = getTodayResistanceSets();
+        var curDay = getCurrentDay(plan.startDate);
+        var text = 'Habit Build \u2014 Day ' + curDay + ': ' + escapeHtml(plan.habit) + '\n\u2713 Completed a resistance set (' + todaySets + ' today)\nTarget: ' + plan.target + ' min \u00B7 Minimum: ' + plan.minimum + ' min';
+        if (note) text += '\n\n\u201C' + note + '\u201D';
+        if (navigator.share) {
+          navigator.share({ title: 'Habit Build', text: text }).catch(function () {});
+        } else {
+          try { navigator.clipboard.writeText(text); } catch {}
+          var shareBtn = document.getElementById('act-share-finish');
+          if (shareBtn) { shareBtn.textContent = 'Copied!'; setTimeout(function () { if (shareBtn) shareBtn.textContent = 'Share That You Showed Up'; }, 2000); }
+        }
+      } else if (id === 'act-done') {
+        var noteEl = document.getElementById('finish-note');
+        var note = noteEl ? noteEl.value.trim() : '';
+        if (note) {
+          var checkIns = getSavedCheckIns();
+          var todayStr = getTodayString();
+          if (checkIns[todayStr]) {
+            checkIns[todayStr].note = note;
+            saveCheckIns(checkIns);
+          }
+        }
+        renderCheckIn(plan);
+        var cs = document.getElementById('checkin-section');
+        if (cs) cs.scrollIntoView({ behavior: 'smooth' });
+      } else if (id === 'act-keep-going-finish') {
+        currentTool = 'stopwatch'; stopwatchState.status = 'idle'; stopwatchState.seconds = 0;
+        renderCollapsedStopwatch(plan);
+        var details = document.querySelector('details:has(#stopwatch-tools)');
+        if (details) { details.open = true; setTimeout(function () { details.scrollIntoView({ behavior: 'smooth' }); }, 100); }
+      }
+      else if (id === 'act-sw-start') startStopwatch(plan);
+      else if (id === 'act-sw-pause') pauseStopwatch(plan);
+      else if (id === 'act-sw-resume') resumeStopwatch(plan);
+      else if (id === 'act-sw-stop') stopStopwatch(plan);
+      else if (id === 'act-sw-save') { handleSaveSwSession(plan); resetStopwatch(plan); }
+      else if (id === 'act-sw-reset' || id === 'act-sw-reset-p') resetStopwatch(plan);
+    });
     try {
       var savedPlan = getSavedPlan();
       if (savedPlan && savedPlan.habit) {
